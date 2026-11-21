@@ -139,6 +139,9 @@ const state = {
   theme: "juridico",
   logoTheme: "original",
   bgPattern: "gradient",
+  bgPhotoImg: null,
+  bgDim: 0.7,
+  planMode: "pro",
   showGuides: false,
   customAccent: null,
   fontScale: 1,
@@ -195,7 +198,7 @@ function wrapText(ctx, text, maxWidth) {
     let current = words[0];
     for (let i = 1; i < words.length; i++) {
       const test = `${current} ${words[i]}`;
-      if (ctx.measureText(test).width <= maxWidth) {
+      if (ctx.measureText(test.replace(/==/g, "")).width <= maxWidth) {
         current = test;
       } else {
         lines.push(current);
@@ -207,10 +210,47 @@ function wrapText(ctx, text, maxWidth) {
   return lines;
 }
 
-function drawWrappedLines(ctx, lines, x, startY, lineHeight) {
+function wrapTextPreserveHighlight(ctx, text, maxWidth) {
+  return wrapText(ctx, text, maxWidth);
+}
+
+function drawWrappedLines(ctx, lines, x, startY, lineHeight, theme) {
   let y = startY;
+  const activeTheme = theme || getActiveTheme();
   for (const line of lines) {
-    ctx.fillText(line, x, y);
+    if (!line.includes("==")) {
+      ctx.fillText(line, x, y);
+      y += lineHeight;
+      continue;
+    }
+    // Renderiza segmentos com ==marca-texto==
+    const parts = line.split(/(==[^=]+==)/g).filter(Boolean);
+    const savedAlign = ctx.textAlign;
+    const cleanFull = line.replace(/==/g, "");
+    let curX = x;
+    if (savedAlign === "center") curX = x - ctx.measureText(cleanFull).width / 2;
+    else if (savedAlign === "right") curX = x - ctx.measureText(cleanFull).width;
+
+    const savedFill = ctx.fillStyle;
+    ctx.textAlign = "left";
+    for (const part of parts) {
+      const isHl = part.startsWith("==") && part.endsWith("==");
+      const txt = isHl ? part.slice(2, -2) : part;
+      const w = ctx.measureText(txt).width;
+      if (isHl && txt.length > 0) {
+        ctx.save();
+        ctx.fillStyle = activeTheme.accent;
+        ctx.globalAlpha = 0.28;
+        roundRect(ctx, curX - 4, y - 2, w + 8, lineHeight * 0.86, 6);
+        ctx.fill();
+        ctx.restore();
+      }
+      ctx.fillStyle = isHl ? activeTheme.accent : savedFill;
+      ctx.fillText(txt, curX, y);
+      curX += w;
+    }
+    ctx.fillStyle = savedFill;
+    ctx.textAlign = savedAlign;
     y += lineHeight;
   }
   return y;
@@ -222,6 +262,16 @@ function drawBackground(theme, w, h) {
   grad.addColorStop(1, theme.bgBottom);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
+
+  if (state.bgPhotoImg) {
+    const img = state.bgPhotoImg;
+    const scale = Math.max(w / img.width, h / img.height);
+    const dw = img.width * scale;
+    const dh = img.height * scale;
+    ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    ctx.fillStyle = `rgba(6, 10, 22, ${state.bgDim})`;
+    ctx.fillRect(0, 0, w, h);
+  }
 
   if (state.bgPattern === "grid") {
     ctx.save();
@@ -921,6 +971,7 @@ function renderMetas(theme, w, h) {
 }
 
 const DYNAMIC_TEMPLATES = {
+  ...(window.EXTRA_TEMPLATES || {}),
   flashcard: {
     heading: "3. Flashcard (Pergunta & Resposta)",
     fields: [
@@ -1126,6 +1177,7 @@ function renderDynamicFields(tpl) {
         <button id="qb-random" class="btn btn-primary" type="button">Sortear Frase</button>
         <button id="qb-next" class="btn btn-secondary" type="button">Próxima Frase →</button>
       </div>
+      <button id="qb-batch-zip" class="btn btn-secondary" type="button">Baixar Lote (5 Frases .ZIP)</button>
     `;
     container.appendChild(box);
 
@@ -1166,6 +1218,45 @@ function renderDynamicFields(tpl) {
       if (!list.length) return;
       quoteCursor = (quoteCursor + 1) % list.length;
       applyEntry(list[quoteCursor], quoteCursor, list.length);
+    });
+
+    box.querySelector("#qb-batch-zip").addEventListener("click", async () => {
+      const list = getFilteredQuotes(catSel.value, searchInp.value);
+      if (!list.length) return;
+      const btn = box.querySelector("#qb-batch-zip");
+      const orig = btn.textContent;
+      btn.textContent = "Gerando ZIP...";
+
+      const prevQuote = dynamicValues.citacao.quote;
+      const files = [];
+      const captions = [];
+      const count = Math.min(5, list.length);
+
+      for (let i = 0; i < count; i++) {
+        const idx = (quoteCursor + i) % list.length;
+        dynamicValues.citacao.quote = list[idx].text;
+        render(true);
+        const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
+        const buf = new Uint8Array(await blob.arrayBuffer());
+        files.push({ name: `frase-${i + 1}.png`, data: buf });
+        captions.push(`--- POST ${i + 1} (${list[idx].cat}) ---\n${list[idx].text}\n`);
+      }
+
+      dynamicValues.citacao.quote = prevQuote;
+      render(false);
+
+      const txtBytes = new TextEncoder().encode(captions.join("\n"));
+      files.push({ name: "legendas.txt", data: txtBytes });
+
+      const zipBlob = createZipBlob(files);
+      const link = document.createElement("a");
+      link.download = `dlconcurseiro-lote-${count}-frases.zip`;
+      link.href = URL.createObjectURL(zipBlob);
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+
+      btn.textContent = "ZIP Baixado!";
+      setTimeout(() => { btn.textContent = orig; }, 2000);
     });
   }
 
@@ -2005,6 +2096,7 @@ function renderEnquete(theme, w, h) {
 }
 
 const RENDERERS = {
+  ...(window.EXTRA_RENDERERS || {}),
   questao: renderQuestao,
   edital: renderEdital,
   rotina: renderRotina,
@@ -2027,6 +2119,17 @@ const RENDERERS = {
   enquete: renderEnquete,
 };
 
+function drawWatermark(theme, w, h) {
+  ctx.save();
+  ctx.fillStyle = theme.muted;
+  ctx.globalAlpha = 0.55;
+  ctx.font = "700 18px Inter, Segoe UI, sans-serif";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "bottom";
+  ctx.fillText("Criado com ConcursoStudio (Modo Free)", w - 36, h - 22);
+  ctx.restore();
+}
+
 function render(forExport = false) {
   const fmt = FORMATS[state.format];
   const theme = getActiveTheme();
@@ -2038,6 +2141,10 @@ function render(forExport = false) {
 
   const fn = RENDERERS[state.template] || renderQuestao;
   fn(theme, fmt.w, fmt.h);
+
+  if (state.planMode === "free") {
+    drawWatermark(theme, fmt.w, fmt.h);
+  }
 
   if (state.showGuides && !forExport) {
     drawSafeGuides(fmt.w, fmt.h);
@@ -2567,6 +2674,126 @@ defaultLogo.onload = () => {
   }
 };
 defaultLogo.src = "dl-concurseiro-logo.jpg";
+
+// Pure-JS Store-mode ZIP builder (zero dependencies)
+function crc32(bytes) {
+  let c = -1;
+  for (let i = 0; i < bytes.length; i++) {
+    c ^= bytes[i];
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+  }
+  return (c ^ -1) >>> 0;
+}
+
+function createZipBlob(files) {
+  const chunks = [];
+  const central = [];
+  let offset = 0;
+
+  for (const f of files) {
+    const nameBytes = new TextEncoder().encode(f.name);
+    const crc = crc32(f.data);
+    const size = f.data.length;
+
+    const local = new Uint8Array(30 + nameBytes.length);
+    const lv = new DataView(local.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(8, 0, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, size, true);
+    lv.setUint32(22, size, true);
+    lv.setUint16(26, nameBytes.length, true);
+    local.set(nameBytes, 30);
+    chunks.push(local, f.data);
+
+    const cd = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(cd.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, size, true);
+    cv.setUint32(24, size, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint32(42, offset, true);
+    cd.set(nameBytes, 46);
+    central.push(cd);
+
+    offset += local.length + size;
+  }
+
+  const cdSize = central.reduce((a, b) => a + b.length, 0);
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, offset, true);
+
+  return new Blob([...chunks, ...central, eocd], { type: "application/zip" });
+}
+
+// Expor helpers compartilhados para templates-extra.js
+window.CS = {
+  ctx,
+  state,
+  getDyn,
+  sc,
+  wrapText,
+  wrapTextPreserveHighlight,
+  drawWrappedLines,
+  roundRect,
+  drawProfileHeader,
+  drawBadge,
+  getSafeVerticalBounds,
+};
+
+// Filtros por categoria de modelo
+document.querySelectorAll(".filter-pill").forEach((pill) => {
+  pill.addEventListener("click", () => {
+    const f = pill.dataset.filter;
+    document.querySelectorAll(".filter-pill").forEach((p) => p.classList.toggle("active", p === pill));
+    document.querySelectorAll(".template-tabs .tab-btn").forEach((btn) => {
+      const show = f === "all" || btn.dataset.cat === f;
+      btn.classList.toggle("hidden", !show);
+    });
+  });
+});
+
+$("bg-photo-input").addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      state.bgPhotoImg = img;
+      render();
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+$("btn-clear-bg").addEventListener("click", () => {
+  state.bgPhotoImg = null;
+  $("bg-photo-input").value = "";
+  render();
+});
+
+$("bg-dim").addEventListener("input", (e) => {
+  const pct = Number(e.target.value);
+  state.bgDim = pct / 100;
+  $("bg-dim-label").textContent = `${pct}%`;
+  render();
+});
+
+$("plan-mode").addEventListener("change", (e) => {
+  state.planMode = e.target.value;
+  render();
+});
 
 loadBrandPrefs();
 refreshDraftsDropdown();

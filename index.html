@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a1128" />
   <title>ConcursoStudio — Gerador de Posts para Concursos</title>
+  <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -35,28 +37,52 @@
     <!-- Painel Esquerdo: Controles -->
     <aside class="controls-panel">
       <section class="control-group">
-        <h2>1. Modelo de Post</h2>
+        <div class="section-row">
+          <h2>1. Modelo de Post (35)</h2>
+        </div>
+        <div class="filter-pills" id="template-filters">
+          <button class="filter-pill active" data-filter="all" type="button">Todos</button>
+          <button class="filter-pill" data-filter="engajamento" type="button">Engajamento</button>
+          <button class="filter-pill" data-filter="conteudo" type="button">Conteúdo</button>
+          <button class="filter-pill" data-filter="noticias" type="button">Notícias</button>
+          <button class="filter-pill" data-filter="vendas" type="button">Vendas</button>
+        </div>
         <div class="template-tabs" role="tablist">
-          <button class="tab-btn active" data-template="questao" type="button">Questão</button>
-          <button class="tab-btn" data-template="edital" type="button">Saiu Edital</button>
-          <button class="tab-btn" data-template="rotina" type="button">Rotina / Lei</button>
-          <button class="tab-btn" data-template="comparativo" type="button">Não Confunda</button>
-          <button class="tab-btn" data-template="checklist" type="button">Checklist / Top</button>
-          <button class="tab-btn" data-template="metas" type="button">Metas / KPIs</button>
-          <button class="tab-btn" data-template="flashcard" type="button">Flashcard</button>
-          <button class="tab-btn" data-template="mnemonico" type="button">Mnemônico</button>
-          <button class="tab-btn" data-template="jurisprudencia" type="button">Súmula / STF</button>
-          <button class="tab-btn" data-template="contagem" type="button">Contagem</button>
-          <button class="tab-btn" data-template="cronograma" type="button">Cronograma</button>
-          <button class="tab-btn" data-template="banca" type="button">Raio-X Banca</button>
-          <button class="tab-btn" data-template="erros" type="button">Erros Comuns</button>
-          <button class="tab-btn" data-template="capa" type="button">Capa Reels/YT</button>
-          <button class="tab-btn" data-template="depoimento" type="button">Aprovado</button>
-          <button class="tab-btn" data-template="citacao" type="button">Motivação</button>
-          <button class="tab-btn" data-template="salario" type="button">Quanto Ganha?</button>
-          <button class="tab-btn" data-template="dica_rapida" type="button">Dica Relâmpago</button>
-          <button class="tab-btn" data-template="noticia" type="button">Plantão / News</button>
-          <button class="tab-btn" data-template="enquete" type="button">Enquete / Debate</button>
+          <button class="tab-btn active" data-template="questao" data-cat="engajamento" type="button">Questão</button>
+          <button class="tab-btn" data-template="edital" data-cat="noticias" type="button">Saiu Edital</button>
+          <button class="tab-btn" data-template="rotina" data-cat="conteudo" type="button">Rotina / Lei</button>
+          <button class="tab-btn" data-template="comparativo" data-cat="conteudo" type="button">Não Confunda</button>
+          <button class="tab-btn" data-template="checklist" data-cat="conteudo" type="button">Checklist / Top</button>
+          <button class="tab-btn" data-template="metas" data-cat="engajamento" type="button">Metas / KPIs</button>
+          <button class="tab-btn" data-template="flashcard" data-cat="conteudo" type="button">Flashcard</button>
+          <button class="tab-btn" data-template="mnemonico" data-cat="conteudo" type="button">Mnemônico</button>
+          <button class="tab-btn" data-template="jurisprudencia" data-cat="conteudo" type="button">Súmula / STF</button>
+          <button class="tab-btn" data-template="contagem" data-cat="noticias" type="button">Contagem</button>
+          <button class="tab-btn" data-template="cronograma" data-cat="conteudo" type="button">Cronograma</button>
+          <button class="tab-btn" data-template="banca" data-cat="conteudo" type="button">Raio-X Banca</button>
+          <button class="tab-btn" data-template="erros" data-cat="engajamento" type="button">Erros Comuns</button>
+          <button class="tab-btn" data-template="capa" data-cat="vendas" type="button">Capa Reels/YT</button>
+          <button class="tab-btn" data-template="depoimento" data-cat="vendas" type="button">Aprovado</button>
+          <button class="tab-btn" data-template="citacao" data-cat="engajamento" type="button">Motivação</button>
+          <button class="tab-btn" data-template="salario" data-cat="noticias" type="button">Quanto Ganha?</button>
+          <button class="tab-btn" data-template="dica_rapida" data-cat="conteudo" type="button">Dica Relâmpago</button>
+          <button class="tab-btn" data-template="noticia" data-cat="noticias" type="button">Plantão / News</button>
+          <button class="tab-btn" data-template="enquete" data-cat="engajamento" type="button">Enquete / Debate</button>
+          <button class="tab-btn" data-template="lacuna" data-cat="engajamento" type="button">Lacuna</button>
+          <button class="tab-btn" data-template="vf" data-cat="engajamento" type="button">V ou F (Combo)</button>
+          <button class="tab-btn" data-template="meme" data-cat="engajamento" type="button">Meme 2 Quadros</button>
+          <button class="tab-btn" data-template="mito" data-cat="engajamento" type="button">Mito vs Verdade</button>
+          <button class="tab-btn" data-template="vademecum" data-cat="conteudo" type="button">Vade Grifado</button>
+          <button class="tab-btn" data-template="prazos" data-cat="conteudo" type="button">Tabela Prazos</button>
+          <button class="tab-btn" data-template="glossario" data-cat="conteudo" type="button">Glossário</button>
+          <button class="tab-btn" data-template="redacao" data-cat="conteudo" type="button">Redação</button>
+          <button class="tab-btn" data-template="notacorte" data-cat="noticias" type="button">Nota de Corte</button>
+          <button class="tab-btn" data-template="termometro" data-cat="noticias" type="button">Termômetro</button>
+          <button class="tab-btn" data-template="calendario" data-cat="noticias" type="button">Calendário</button>
+          <button class="tab-btn" data-template="kitprova" data-cat="noticias" type="button">Kit Prova</button>
+          <button class="tab-btn" data-template="antesdepois" data-cat="vendas" type="button">Antes & Depois</button>
+          <button class="tab-btn" data-template="live" data-cat="vendas" type="button">Aviso de Live</button>
+          <button class="tab-btn" data-template="indicacao" data-cat="vendas" type="button">Indicação / Link</button>
         </div>
 
         <div id="slide-toggle-wrap" class="slide-toggle-wrap">
@@ -127,13 +153,35 @@
             </select>
           </label>
           <label class="field">
-            <span>Guias do Instagram</span>
+            <span>Guias / Modo SaaS</span>
             <select id="safe-guides">
-              <option value="off">Ocultas</option>
+              <option value="off">Guias Ocultas</option>
               <option value="on">Mostrar Zona Segura</option>
             </select>
           </label>
         </div>
+
+        <div class="grid-2">
+          <label class="field">
+            <span>Foto de Fundo (Studygram)</span>
+            <div class="file-row">
+              <input id="bg-photo-input" type="file" accept="image/*" />
+              <button id="btn-clear-bg" class="btn btn-ghost" type="button">Limpar</button>
+            </div>
+          </label>
+          <label class="field">
+            <span>Escurecer Foto (<strong id="bg-dim-label">70%</strong>)</span>
+            <input id="bg-dim" type="range" min="20" max="92" step="4" value="70" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Modo de Exportação (SaaS)</span>
+          <select id="plan-mode">
+            <option value="pro">Plano Pro (Sem marca d'água)</option>
+            <option value="free">Plano Gratuito (Com marca d'água)</option>
+          </select>
+        </label>
 
         <div class="grid-2">
           <label class="field">
@@ -410,6 +458,12 @@ Controle de Constitucionalidade</textarea>
   </main>
 
   <script src="frases-motivacao.js"></script>
+  <script src="templates-extra.js"></script>
   <script src="app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js").catch(() => {});
+    }
+  </script>
 </body>
 </html>
