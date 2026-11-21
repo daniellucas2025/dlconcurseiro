@@ -1727,11 +1727,8 @@ function renderCitacao(theme, w, h) {
   const qLineH = Math.round(qSize * 1.3);
   ctx.font = `800 ${qSize}px Inter, Segoe UI, sans-serif`;
   const qLines = wrapText(ctx, getDyn("citacao", "quote"), contentW);
-  const blockH = qLines.length * qLineH + 140;
+  const blockH = qLines.length * qLineH + 70;
   let cursorY = Math.max(headerBottom + 60, (headerBottom + bottom) / 2 - blockH / 2);
-
-  const b = drawBadge(theme, getDyn("citacao", "tag").toUpperCase(), padX, cursorY);
-  cursorY += b.h + 44;
 
   ctx.fillStyle = theme.text;
   ctx.font = `800 ${qSize}px Inter, Segoe UI, sans-serif`;
