@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ConcursoStudio — Gerador de Posts para Concursos</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-badge">CS</span>
+      <div>
+        <h1>ConcursoStudio</h1>
+        <p>Gerador de Imagens para Redes Sociais • Nicho Concursos</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button id="btn-preset-example" class="btn btn-secondary" type="button">
+        Carregar Exemplo
+      </button>
+      <button id="btn-copy-caption" class="btn btn-secondary" type="button">
+        Copiar Legenda IG
+      </button>
+      <button id="btn-copy-image" class="btn btn-secondary" type="button">
+        Copiar Imagem
+      </button>
+      <button id="btn-download" class="btn btn-primary" type="button">
+        Baixar PNG (1080px)
+      </button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <!-- Painel Esquerdo: Controles -->
+    <aside class="controls-panel">
+      <section class="control-group">
+        <h2>1. Modelo de Post</h2>
+        <div class="template-tabs" role="tablist">
+          <button class="tab-btn active" data-template="questao" type="button">Questão</button>
+          <button class="tab-btn" data-template="edital" type="button">Saiu Edital</button>
+          <button class="tab-btn" data-template="rotina" type="button">Rotina / Lei</button>
+          <button class="tab-btn" data-template="comparativo" type="button">Não Confunda</button>
+          <button class="tab-btn" data-template="checklist" type="button">Checklist / Top</button>
+          <button class="tab-btn" data-template="metas" type="button">Metas / KPIs</button>
+          <button class="tab-btn" data-template="flashcard" type="button">Flashcard</button>
+          <button class="tab-btn" data-template="mnemonico" type="button">Mnemônico</button>
+          <button class="tab-btn" data-template="jurisprudencia" type="button">Súmula / STF</button>
+          <button class="tab-btn" data-template="contagem" type="button">Contagem</button>
+          <button class="tab-btn" data-template="cronograma" type="button">Cronograma</button>
+          <button class="tab-btn" data-template="banca" type="button">Raio-X Banca</button>
+          <button class="tab-btn" data-template="erros" type="button">Erros Comuns</button>
+          <button class="tab-btn" data-template="capa" type="button">Capa Reels/YT</button>
+          <button class="tab-btn" data-template="depoimento" type="button">Aprovado</button>
+          <button class="tab-btn" data-template="citacao" type="button">Motivação</button>
+          <button class="tab-btn" data-template="salario" type="button">Quanto Ganha?</button>
+          <button class="tab-btn" data-template="dica_rapida" type="button">Dica Relâmpago</button>
+          <button class="tab-btn" data-template="noticia" type="button">Plantão / News</button>
+          <button class="tab-btn" data-template="enquete" type="button">Enquete / Debate</button>
+        </div>
+
+        <div id="slide-toggle-wrap" class="slide-toggle-wrap">
+          <span>Slide do Carrossel:</span>
+          <div class="pill-group">
+            <button class="pill-btn active" data-slide="1" type="button">Slide 1 (Pergunta)</button>
+            <button class="pill-btn" data-slide="2" type="button">Slide 2 (Gabarito)</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="control-group">
+        <h2>2. Formato & Identidade (White-Label)</h2>
+        <div class="grid-2">
+          <label class="field">
+            <span>Formato</span>
+            <select id="format-select">
+              <option value="portrait">Feed Retrato (1080×1350 • 4:5)</option>
+              <option value="portrait34">Feed Novo IG (1080×1440 • 3:4)</option>
+              <option value="square">Feed Quadrado (1080×1080 • 1:1)</option>
+              <option value="story">Stories / Reels (1080×1920 • 9:16)</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Tema / Paleta</span>
+            <select id="theme-select">
+              <option value="juridico">Azul Jurídico (Escuro)</option>
+              <option value="policial">Preto & Dourado (Policial)</option>
+              <option value="fiscal">Verde Esmeralda (Fiscal)</option>
+              <option value="studygram">Roxo Studygram</option>
+              <option value="clean">Minimalista Claro</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label class="field">
+            <span>Seu @ no Instagram</span>
+            <input id="profile-handle" type="text" value="@dlconcurseiro" maxlength="35" />
+          </label>
+          <label class="field">
+            <span>Nome / Slogan</span>
+            <input id="profile-name" type="text" value="DL Concurseiro • Questões & Rotina" maxlength="40" />
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label class="field">
+            <span>Cor de Destaque</span>
+            <div class="color-row">
+              <input id="accent-color" type="color" value="#38bdf8" />
+              <button id="btn-reset-accent" class="btn btn-ghost" type="button">Padrão</button>
+            </div>
+          </label>
+          <label class="field">
+            <span>Tamanho do Texto (<strong id="font-scale-label">100%</strong>)</span>
+            <input id="font-scale" type="range" min="85" max="120" step="5" value="100" />
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label class="field">
+            <span>Estilo de Fundo</span>
+            <select id="bg-pattern">
+              <option value="gradient">Degradê Limpo</option>
+              <option value="grid">Grade Studygram</option>
+              <option value="dots">Pontilhado Caderno</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Guias do Instagram</span>
+            <select id="safe-guides">
+              <option value="off">Ocultas</option>
+              <option value="on">Mostrar Zona Segura</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label class="field">
+            <span>Cor da Logo (independente)</span>
+            <select id="logo-theme-select">
+              <option value="original">Original (DL Imagem)</option>
+              <option value="juridico">Azul Jurídico</option>
+              <option value="policial">Preto & Dourado</option>
+              <option value="fiscal">Verde Esmeralda</option>
+              <option value="studygram">Roxo Studygram</option>
+              <option value="clean">Minimalista Claro</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Logo / Foto do Perfil (opcional)</span>
+            <div class="file-row">
+              <input id="avatar-input" type="file" accept="image/*" />
+              <button id="btn-clear-avatar" class="btn btn-ghost" type="button">Remover</button>
+            </div>
+          </label>
+        </div>
+
+        <div class="drafts-box">
+          <div class="section-row">
+            <span class="drafts-title">Rascunhos Salvos</span>
+            <button id="btn-save-draft" class="btn btn-ghost" type="button">+ Salvar Atual</button>
+          </div>
+          <div class="file-row">
+            <select id="drafts-select">
+              <option value="">Selecione um rascunho...</option>
+            </select>
+            <button id="btn-delete-draft" class="btn btn-ghost" type="button" title="Excluir rascunho selecionado">Excluir</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Campos dinâmicos por template -->
+      <section class="control-group" id="fields-questao">
+        <div class="section-row">
+          <h2>3. Conteúdo da Questão</h2>
+          <button id="btn-cebraspe-mode" class="btn btn-ghost" type="button" title="Alternar para Certo / Errado">
+            Modo Certo/Errado
+          </button>
+        </div>
+
+        <details class="quick-paste">
+          <summary>Colar questão bruta (Auto-preencher A–E)</summary>
+          <div class="quick-paste-body">
+            <textarea id="q-raw-paste" rows="4" placeholder="Cole aqui o enunciado + alternativas A) ... B) ... C) ... D) ... E) ..."></textarea>
+            <button id="btn-parse-raw" class="btn btn-secondary" type="button">Extrair Enunciado e Alternativas</button>
+          </div>
+        </details>
+
+        <div class="grid-2">
+          <label class="field">
+            <span>Banca / Ano</span>
+            <input id="q-banca" type="text" value="CEBRASPE • 2026" />
+          </label>
+          <label class="field">
+            <span>Matéria / Assunto</span>
+            <input id="q-materia" type="text" value="Direito Constitucional" />
+          </label>
+        </div>
+        <label class="field">
+          <span>Enunciado da Questão</span>
+          <textarea id="q-enunciado" rows="4">Acerca dos direitos e garantias fundamentais previstos na Constituição Federal, a casa é asilo inviolável do indivíduo, ninguém nela podendo penetrar sem consentimento do morador, SALVO:</textarea>
+        </label>
+        <div class="alternatives-inputs">
+          <label class="field"><span>Alternativa A</span><input id="q-alt-a" type="text" value="A) Em caso de flagrante delito ou desastre, a qualquer hora." /></label>
+          <label class="field"><span>Alternativa B</span><input id="q-alt-b" type="text" value="B) Por determinação judicial, durante a noite ou o dia." /></label>
+          <label class="field"><span>Alternativa C</span><input id="q-alt-c" type="text" value="C) Por ordem de autoridade policial, sem mandado, de dia." /></label>
+          <label class="field"><span>Alternativa D</span><input id="q-alt-d" type="text" value="D) Apenas para prestar socorro, mediante autorização prévia." /></label>
+          <label class="field"><span>Alternativa E (opcional)</span><input id="q-alt-e" type="text" value="" placeholder="Deixe vazio se a questão tiver apenas A–D" /></label>
+        </div>
+        <div class="grid-2">
+          <label class="field">
+            <span>Gabarito Correto</span>
+            <select id="q-gabarito">
+              <option value="A" selected>Letra A</option>
+              <option value="B">Letra B</option>
+              <option value="C">Letra C</option>
+              <option value="D">Letra D</option>
+              <option value="E">Letra E</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Chamada (CTA)</span>
+            <input id="q-cta" type="text" value="Comente sua resposta antes de passar! →" />
+          </label>
+        </div>
+        <label class="field">
+          <span>Comentário / Explicação (Slide 2)</span>
+          <textarea id="q-comentario" rows="3">Art. 5º, XI da CF/88: ninguém pode entrar sem consentimento, salvo em flagrante delito ou desastre, para prestar socorro (a qualquer hora), ou durante o dia por determinação judicial.</textarea>
+        </label>
+      </section>
+
+      <section class="control-group hidden" id="fields-edital">
+        <h2>3. Dados do Edital</h2>
+        <div class="grid-2">
+          <label class="field">
+            <span>Selo / Status</span>
+            <input id="e-badge" type="text" value="EDITAL PUBLICADO" />
+          </label>
+          <label class="field">
+            <span>Banca Organizadora</span>
+            <input id="e-banca" type="text" value="FGV" />
+          </label>
+        </div>
+        <label class="field">
+          <span>Nome do Concurso / Órgão</span>
+          <input id="e-orgao" type="text" value="Tribunal Regional do Trabalho (TRT)" />
+        </label>
+        <div class="grid-2">
+          <label class="field">
+            <span>Vagas</span>
+            <input id="e-vagas" type="text" value="120 + Cadastro Reserva" />
+          </label>
+          <label class="field">
+            <span>Remuneração Inicial</span>
+            <input id="e-salario" type="text" value="Até R$ 13.994,78" />
+          </label>
+        </div>
+        <div class="grid-2">
+          <label class="field">
+            <span>Escolaridade</span>
+            <input id="e-escolaridade" type="text" value="Nível Superior" />
+          </label>
+          <label class="field">
+            <span>Inscrições até</span>
+            <input id="e-prazo" type="text" value="18/12/2026" />
+          </label>
+        </div>
+        <label class="field">
+          <span>Observação / CTA</span>
+          <input id="e-cta" type="text" value="Salve este post e envie para quem vai fazer!" />
+        </label>
+      </section>
+
+      <section class="control-group hidden" id="fields-rotina">
+        <h2>3. Card de Rotina / Lei Seca</h2>
+        <div class="grid-2">
+          <label class="field">
+            <span>Etiqueta Superior</span>
+            <input id="r-tag" type="text" value="ROTINA DE ESTUDOS • DIA 42" />
+          </label>
+          <label class="field">
+            <span>Destaque (Ex: Dias / Meta)</span>
+            <input id="r-metric" type="text" value="Faltam 45 dias" />
+          </label>
+        </div>
+        <label class="field">
+          <span>Título Principal</span>
+          <input id="r-title" type="text" value="Constância vence intensidade." />
+        </label>
+        <label class="field">
+          <span>Texto / Artigo de Lei / Resumo</span>
+          <textarea id="r-body" rows="4">Hoje o foco foi resolução de 60 questões de Direito Administrativo + revisão dos erros no caderno. Não espere a motivação chegar: sente na cadeira e faça o combinado.</textarea>
+        </label>
+        <label class="field">
+          <span>Rodapé / Hashtag</span>
+          <input id="r-footer" type="text" value="#FocoNaVaga • #EstudaQuePassa" />
+        </label>
+      </section>
+
+      <section class="control-group hidden" id="fields-comparativo">
+        <h2>3. Comparativo (Não Confunda)</h2>
+        <label class="field">
+          <span>Etiqueta Superior</span>
+          <input id="c-tag" type="text" value="NÃO CONFUNDA NA PROVA" />
+        </label>
+        <label class="field">
+          <span>Título do Comparativo</span>
+          <input id="c-title" type="text" value="Cargo Público vs. Emprego Público" />
+        </label>
+        <div class="grid-2">
+          <label class="field">
+            <span>Lado A (Título)</span>
+            <input id="c-a-title" type="text" value="Cargo Público" />
+          </label>
+          <label class="field">
+            <span>Lado B (Título)</span>
+            <input id="c-b-title" type="text" value="Emprego Público" />
+          </label>
+        </div>
+        <div class="grid-2">
+          <label class="field">
+            <span>Pontos do Lado A (1 por linha)</span>
+            <textarea id="c-a-body" rows="4">Regime estatutário
+Adquire estabilidade (3 anos)
+Administração direta, autarquias e fundações</textarea>
+          </label>
+          <label class="field">
+            <span>Pontos do Lado B (1 por linha)</span>
+            <textarea id="c-b-body" rows="4">Regime celetista (CLT)
+Sem estabilidade comum
+Empresas públicas e sociedades de economia mista</textarea>
+          </label>
+        </div>
+        <label class="field">
+          <span>Chamada (CTA)</span>
+          <input id="c-cta" type="text" value="Salve para não errar mais na prova!" />
+        </label>
+      </section>
+
+      <section class="control-group hidden" id="fields-checklist">
+        <h2>3. Checklist / Top Assuntos</h2>
+        <label class="field">
+          <span>Etiqueta Superior</span>
+          <input id="l-tag" type="text" value="O QUE MAIS CAI • FGV" />
+        </label>
+        <label class="field">
+          <span>Título Principal</span>
+          <input id="l-title" type="text" value="5 temas obrigatórios de Direito Constitucional" />
+        </label>
+        <label class="field">
+          <span>Itens da Lista (1 por linha, máx. 5)</span>
+          <textarea id="l-items" rows="5">Direitos e Garantias Fundamentais (Art. 5º)
+Organização Político-Administrativa
+Administração Pública (Art. 37)
+Poder Legislativo e Processo Legislativo
+Controle de Constitucionalidade</textarea>
+        </label>
+        <label class="field">
+          <span>Chamada (CTA)</span>
+          <input id="l-cta" type="text" value="Quantos desses você já revisou essa semana?" />
+        </label>
+      </section>
+
+      <section class="control-group hidden" id="fields-metas">
+        <h2>3. Metas / Check-in de Estudos</h2>
+        <label class="field">
+          <span>Etiqueta Superior</span>
+          <input id="m-tag" type="text" value="CHECK-IN DE ESTUDOS • HOJE" />
+        </label>
+        <label class="field">
+          <span>Título / Frase do Dia</span>
+          <input id="m-title" type="text" value="Mais um dia pago rumo à posse!" />
+        </label>
+        <div class="grid-2">
+          <label class="field"><span>Valor Métrica 1</span><input id="m-v1" type="text" value="4h20" /></label>
+          <label class="field"><span>Rótulo Métrica 1</span><input id="m-l1" type="text" value="HORAS LÍQUIDAS" /></label>
+        </div>
+        <div class="grid-2">
+          <label class="field"><span>Valor Métrica 2</span><input id="m-v2" type="text" value="85" /></label>
+          <label class="field"><span>Rótulo Métrica 2</span><input id="m-l2" type="text" value="QUESTÕES FEITAS" /></label>
+        </div>
+        <div class="grid-2">
+          <label class="field"><span>Valor Métrica 3</span><input id="m-v3" type="text" value="82%" /></label>
+          <label class="field"><span>Rótulo Métrica 3</span><input id="m-l3" type="text" value="ACERTOS" /></label>
+        </div>
+        <label class="field">
+          <span>Resumo / Matérias Estudadas</span>
+          <textarea id="m-body" rows="3">Foco em Direito Administrativo (Licitações - Lei 14.133) + bateria de questões de Português da FGV. Amanhã tem revisão do caderno de erros!</textarea>
+        </label>
+        <label class="field">
+          <span>Rodapé / CTA</span>
+          <input id="m-cta" type="text" value="Quantas questões você fez hoje? Comenta aqui!" />
+        </label>
+      </section>
+
+      <section class="control-group hidden" id="fields-dynamic"></section>
+    </aside>
+
+    <!-- Painel Direito: Preview ao Vivo -->
+    <section class="preview-panel">
+      <div class="preview-header">
+        <span id="preview-dimensions">1080 × 1350 px (Feed Retrato 4:5)</span>
+        <span class="preview-tip">Atualização em tempo real</span>
+      </div>
+      <div class="canvas-stage">
+        <canvas id="post-canvas" width="1080" height="1350"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <script src="frases-motivacao.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
