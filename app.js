@@ -217,14 +217,16 @@ function wrapTextPreserveHighlight(ctx, text, maxWidth) {
 function drawWrappedLines(ctx, lines, x, startY, lineHeight, theme) {
   let y = startY;
   const activeTheme = theme || getActiveTheme();
+  let inHighlight = false;
+
   for (const line of lines) {
-    if (!line.includes("==")) {
+    if (!line.includes("==") && !inHighlight) {
       ctx.fillText(line, x, y);
       y += lineHeight;
       continue;
     }
-    // Renderiza segmentos com ==marca-texto==
-    const parts = line.split(/(==[^=]+==)/g).filter(Boolean);
+
+    const parts = line.split(/(==)/g);
     const savedAlign = ctx.textAlign;
     const cleanFull = line.replace(/==/g, "");
     let curX = x;
@@ -234,19 +236,22 @@ function drawWrappedLines(ctx, lines, x, startY, lineHeight, theme) {
     const savedFill = ctx.fillStyle;
     ctx.textAlign = "left";
     for (const part of parts) {
-      const isHl = part.startsWith("==") && part.endsWith("==");
-      const txt = isHl ? part.slice(2, -2) : part;
-      const w = ctx.measureText(txt).width;
-      if (isHl && txt.length > 0) {
+      if (part === "==") {
+        inHighlight = !inHighlight;
+        continue;
+      }
+      if (!part) continue;
+      const w = ctx.measureText(part).width;
+      if (inHighlight) {
         ctx.save();
         ctx.fillStyle = activeTheme.accent;
         ctx.globalAlpha = 0.28;
-        roundRect(ctx, curX - 4, y - 2, w + 8, lineHeight * 0.86, 6);
+        roundRect(ctx, curX - 3, y - 2, w + 6, lineHeight * 0.84, 6);
         ctx.fill();
         ctx.restore();
       }
-      ctx.fillStyle = isHl ? activeTheme.accent : savedFill;
-      ctx.fillText(txt, curX, y);
+      ctx.fillStyle = inHighlight ? activeTheme.accent : savedFill;
+      ctx.fillText(part, curX, y);
       curX += w;
     }
     ctx.fillStyle = savedFill;
