@@ -406,7 +406,7 @@ window.EXTRA_RENDERERS = {
     const fSize = c.sc(isCompact ? 29 : 34);
     const lH = Math.round(fSize * 1.48);
     c.ctx.font = `600 ${fSize}px Inter, Segoe UI, sans-serif`;
-    const tLines = c.wrapText(c.ctx, c.getDyn("vademecum", "text").replace(/==/g, ""), contentW - 72);
+    const tLines = c.wrapText(c.ctx, c.getDyn("vademecum", "text").replace(/==/g, ""), contentW - 96);
     const boxH = Math.max(260, tLines.length * lH + 88);
 
     c.ctx.fillStyle = theme.card;
@@ -417,8 +417,8 @@ window.EXTRA_RENDERERS = {
     c.ctx.stroke();
 
     c.ctx.fillStyle = theme.text;
-    const rawWrapped = c.wrapTextPreserveHighlight(c.ctx, c.getDyn("vademecum", "text"), contentW - 72);
-    c.drawWrappedLines(c.ctx, rawWrapped, padX + 36, y + 44, lH, theme);
+    const rawWrapped = c.wrapTextPreserveHighlight(c.ctx, c.getDyn("vademecum", "text"), contentW - 96);
+    c.drawWrappedLines(c.ctx, rawWrapped, padX + 42, y + 44, lH, theme);
 
     c.ctx.fillStyle = theme.accent;
     c.ctx.font = "700 26px Inter, Segoe UI, sans-serif";
