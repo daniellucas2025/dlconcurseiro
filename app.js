@@ -2597,30 +2597,81 @@ function deleteSelectedDraft() {
 }
 
 function parseRawQuestion() {
-  const raw = $("q-raw-paste").value.trim();
+  let raw = $("q-raw-paste").value.replace(/\r\n/g, "\n").trim();
   if (!raw) return;
 
-  // Divide onde começam alternativas A), B), C), D), E) ou A., B., ...
-  const regex = /(?:^|\n)\s*([A-Ea-e])[)\.\-]\s+/g;
-  const matches = [...raw.matchAll(regex)];
-  if (matches.length === 0) {
-    $("q-enunciado").value = raw;
-    render();
-    return;
+  // 1. Detecta gabarito no final (ex: "Gabarito: B" ou "Resposta: Letra C")
+  const gabMatch = raw.match(/(?:^|\n)\s*(?:gabarito|resposta)\s*[:\-]?\s*(?:letra\s*)?([A-Ea-e])\b[^\n]*$/i);
+  if (gabMatch) {
+    $("q-gabarito").value = gabMatch[1].toUpperCase();
+    raw = raw.slice(0, gabMatch.index).trim();
   }
 
-  const enunciado = raw.slice(0, matches[0].index).trim();
-  if (enunciado) $("q-enunciado").value = enunciado;
+  // 2. Remove linhas de ruído comuns de cópia do TEC / QConcursos / Gran
+  const noiseLineRe = /^(?:responder|pular|estatísticas|comentários|cadernos|anotações|notificar erro|texto associado|salvar|q\d{5,}|#\d{5,})$/i;
+  const rawLines = raw.split("\n").filter((l) => !noiseLineRe.test(l.trim()));
+
+  // 3. Tenta extrair Banca + Ano das primeiras 3 linhas
+  const boardRe = /\b(FGV|CEBRASPE|CESPE|FCC|VUNESP|IBFC|QUADRIX|INSTITUTO AOCP|AOCP|IDECAN|CONSULPLAN|FUNDATEC|IADES|CESGRANRIO|SELECON|FEPESE|FUMARC)\b/i;
+  const yearRe = /\b(20[1-2][0-9])\b/;
+  for (let i = 0; i < Math.min(3, rawLines.length); i++) {
+    const line = rawLines[i].trim();
+    const bMatch = line.match(boardRe);
+    const yMatch = line.match(yearRe);
+    if (bMatch && (yMatch || /ano\s*:/i.test(line) || /banca\s*:/i.test(line) || line.length < 110)) {
+      const boardName = bMatch[1].toUpperCase();
+      $("q-banca").value = yMatch ? `${boardName} • ${yMatch[1]}` : boardName;
+      if (/^ano\s*:|^banca\s*:|^\w+\s*[-–•|/]\s*20\d{2}/i.test(line)) {
+        rawLines.splice(i, 1);
+      }
+      break;
+    }
+  }
+  raw = rawLines.join("\n").trim();
+
+  // 4. Suporta: (A) txt | A) txt | A. txt | A - txt | A – txt | A\ntxt (início de linha ou após espaço)
+  const altRegex = /(?:^|\n)\s*\(?([A-Ea-e])(?:\)\s*|\.(?=\s)|\s*[-–—:]\s*|\s*\n(?=\S))/g;
+  let matches = [...raw.matchAll(altRegex)];
+
+  // Fallback: alternativas na mesma linha (ex: "A) xxx B) yyy C) zzz")
+  if (matches.length < 2) {
+    const inlineRegex = /(?:^|\s)\(?([A-Ea-e])\)\s+/g;
+    const inlineMatches = [...raw.matchAll(inlineRegex)];
+    if (inlineMatches.length >= 2) matches = inlineMatches;
+  }
+
+  // Filtra para manter apenas sequência válida começando em A (A, B, C...)
+  const firstA = matches.findIndex((m) => m[1].toUpperCase() === "A");
+  if (firstA !== -1) {
+    matches = matches.slice(firstA);
+  }
 
   const map = { A: "", B: "", C: "", D: "", E: "" };
-  for (let i = 0; i < matches.length; i++) {
-    const letter = matches[i][1].toUpperCase();
-    const start = matches[i].index + matches[i][0].length;
-    const end = i + 1 < matches.length ? matches[i + 1].index : raw.length;
-    const body = raw.slice(start, end).replace(/\s+/g, " ").trim();
-    if (letter in map) {
-      map[letter] = `${letter}) ${body}`;
+  let count = 0;
+
+  if (matches.length >= 2) {
+    const enunciado = raw.slice(0, matches[0].index).trim();
+    if (enunciado) $("q-enunciado").value = enunciado;
+
+    for (let i = 0; i < matches.length; i++) {
+      const letter = matches[i][1].toUpperCase();
+      const start = matches[i].index + matches[i][0].length;
+      const end = i + 1 < matches.length ? matches[i + 1].index : raw.length;
+      const body = raw.slice(start, end).replace(/\s+/g, " ").trim();
+      if (letter in map && !map[letter] && body) {
+        map[letter] = `${letter}) ${body}`;
+        count++;
+      }
     }
+  } else if (/\n\s*(?:\(\s*\)\s*)?certo\s*\n\s*(?:\(\s*\)\s*)?errado\s*$/i.test(raw)) {
+    // Suporte a Certo / Errado colado direto
+    const ceIdx = raw.search(/\n\s*(?:\(\s*\)\s*)?certo\s*\n\s*(?:\(\s*\)\s*)?errado\s*$/i);
+    $("q-enunciado").value = raw.slice(0, ceIdx).trim();
+    map.A = "A) CERTO";
+    map.B = "B) ERRADO";
+    count = 2;
+  } else {
+    $("q-enunciado").value = raw;
   }
 
   $("q-alt-a").value = map.A;
@@ -2628,6 +2679,13 @@ function parseRawQuestion() {
   $("q-alt-c").value = map.C;
   $("q-alt-d").value = map.D;
   $("q-alt-e").value = map.E;
+
+  const btn = $("btn-parse-raw");
+  if (btn) {
+    const orig = "Extrair Enunciado e Alternativas";
+    btn.textContent = count > 0 ? `Extraído (${count} alt.)!` : "Enunciado preenchido!";
+    setTimeout(() => { btn.textContent = orig; }, 1800);
+  }
   render();
 }
 
@@ -2815,6 +2873,9 @@ $("btn-cebraspe-mode").addEventListener("click", () => {
 });
 
 $("btn-parse-raw").addEventListener("click", parseRawQuestion);
+$("q-raw-paste")?.addEventListener("paste", () => {
+  setTimeout(parseRawQuestion, 30);
+});
 
 document
   .querySelectorAll("input[type='text'], textarea, select")
