@@ -2359,11 +2359,14 @@ $("btn-preset-example").addEventListener("click", loadExample);
 
 
 /* Navegação do editor por etapas */
+let lastNonPreviewTab = "modelos";
 function setEditorTab(tab) {
+  if (tab !== "previa") lastNonPreviewTab = tab;
   const panel = $("controls-panel");
   panel.dataset.editorSection = tab;
   document.body.classList.toggle("preview-mode", tab === "previa");
   document.querySelectorAll("[data-editor-tab]").forEach((b) => b.classList.toggle("active", b.dataset.editorTab === tab));
+  $("mobile-preview-action").textContent = tab === "previa" ? "Editar" : "Prévia";
   if (tab === "previa") $("preview-panel").scrollIntoView({ behavior: "smooth", block: "start" });
   else panel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -2375,7 +2378,10 @@ document.querySelectorAll("[data-editor-tab]").forEach((button) => {
   button.addEventListener("click", () => setEditorTab(button.dataset.editorTab));
 });
 $("floating-preview-button").addEventListener("click", () => setEditorTab("previa"));
-$("mobile-preview-action").addEventListener("click", () => setEditorTab("previa"));
+$("mobile-preview-action").addEventListener("click", () => {
+  if (document.body.classList.contains("preview-mode")) setEditorTab(lastNonPreviewTab);
+  else setEditorTab("previa");
+});
 $("btn-fullscreen-preview").addEventListener("click", () => {
   const panel = $("preview-panel");
   const active = panel.classList.toggle("is-fullscreen");
