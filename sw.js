@@ -1,9 +1,11 @@
-const CACHE_NAME = "concursostudio-mobile-v4";
+const CACHE_NAME = "concursostudio-mobile-v5";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./mobile.css",
+  "./caveat-font.css",
+  "./caveat-OFL.txt",
   "./app.js",
   "./frases-motivacao.js",
   "./templates-extra.js",
