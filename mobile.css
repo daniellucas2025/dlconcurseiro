@@ -228,3 +228,15 @@ body.preview-mode .preview-panel { display:flex !important; width:100%; }
   .controls-panel[data-editor-section="conteudo"] .control-group:not([data-editor-section="conteudo"]) { display:none; }
   .controls-panel[data-editor-section="previa"] { display:none; }
 }
+
+.collapse-editor-button {
+  min-height:38px; padding:8px 12px; border:1px solid var(--border);
+  border-radius:9px; background:var(--bg); color:var(--muted);
+  font-size:12px; font-weight:700;
+}
+.controls-panel.editor-collapsed .control-group { display:none !important; }
+.controls-panel.editor-collapsed .collapse-editor-button { color:var(--accent); }
+.controls-panel.editor-collapsed .editor-tabs { grid-template-columns:repeat(4,minmax(0,1fr)); }
+@media (min-width:981px) {
+  .controls-panel.editor-collapsed { width:100%; max-width:100%; }
+}
