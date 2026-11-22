@@ -140,3 +140,91 @@ button { -webkit-tap-highlight-color: transparent; }
 @media (display-mode: standalone) {
   body { padding-bottom: env(safe-area-inset-bottom); }
 }
+
+
+/* Navegação em etapas, prévia imersiva e ações fixas */
+.editor-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  padding: 7px;
+  margin: -4px -4px 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+}
+.editor-tab {
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 4px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.editor-tab.active {
+  color: var(--text);
+  background: var(--accent-strong);
+  border-color: var(--accent);
+}
+.preview-actions { display:flex; align-items:center; gap:8px; }
+.toggle-line { display:flex; align-items:center; gap:9px; color:var(--text) !important; }
+.toggle-line input { width:20px !important; height:20px; accent-color:var(--accent); }
+.manuscript-control small { color:var(--muted); font-size:11px; line-height:1.4; }
+.floating-preview-button, .mobile-export-bar { display:none; }
+.preview-panel.is-fullscreen {
+  position:fixed !important; inset:0 !important; z-index:1000 !important;
+  width:100vw !important; height:100dvh !important; max-height:none !important;
+  overflow:auto !important; background:var(--bg) !important;
+  padding: max(14px, env(safe-area-inset-top)) 12px calc(18px + env(safe-area-inset-bottom)) !important;
+}
+.preview-panel.is-fullscreen .canvas-stage { width:min(100%, 760px); flex:1; min-height:0; }
+.preview-panel.is-fullscreen #post-canvas { max-height:calc(100dvh - 110px); width:auto; height:auto; }
+body.preview-mode .controls-panel { display:none !important; }
+body.preview-mode .workspace { display:flex !important; min-height:0; }
+body.preview-mode .preview-panel { display:flex !important; width:100%; }
+@media (max-width:980px) {
+  .editor-tabs { top:0; margin:0 0 2px; }
+  .controls-panel { padding-bottom:90px !important; }
+  .controls-panel .control-group { display:none; }
+  .controls-panel[data-editor-section="modelos"] .control-group[data-editor-section="modelos"],
+  .controls-panel[data-editor-section="personalizacao"] .control-group[data-editor-section="personalizacao"],
+  .controls-panel[data-editor-section="conteudo"] .control-group[data-editor-section="conteudo"] { display:flex; }
+  .preview-panel { display:none; }
+  body.preview-mode .preview-panel { display:flex; }
+  .floating-preview-button {
+    display:block; position:fixed; z-index:50; right:14px;
+    bottom:calc(76px + env(safe-area-inset-bottom));
+    min-height:48px; padding:0 18px; border:1px solid var(--accent);
+    border-radius:999px; color:#fff; font-weight:800;
+    background:linear-gradient(135deg,#0ea5e9,#4f46e5);
+    box-shadow:0 8px 26px rgba(0,0,0,.35);
+  }
+  body.preview-mode .floating-preview-button { display:none; }
+  .mobile-export-bar {
+    position:fixed; z-index:60; left:0; right:0; bottom:0;
+    display:grid; grid-template-columns:.8fr 1fr 1.25fr; gap:8px;
+    padding:9px 12px calc(9px + env(safe-area-inset-bottom));
+    background:rgba(11,16,32,.96); border-top:1px solid var(--border);
+    backdrop-filter:blur(14px);
+  }
+  .mobile-export-bar button {
+    min-height:46px; border:1px solid var(--border); border-radius:11px;
+    background:var(--panel-alt); color:var(--text); font-size:13px; font-weight:800;
+  }
+  #mobile-download-action { background:linear-gradient(120deg,#0ea5e9,#4f46e5); border:0; color:white; }
+  body.preview-mode .mobile-export-bar { display:grid; }
+  body.preview-mode .controls-panel { display:none !important; }
+  body.preview-mode .preview-panel { display:flex !important; }
+}
+@media (min-width:981px) {
+  .controls-panel[data-editor-section="modelos"] .control-group:not([data-editor-section="modelos"]),
+  .controls-panel[data-editor-section="personalizacao"] .control-group:not([data-editor-section="personalizacao"]),
+  .controls-panel[data-editor-section="conteudo"] .control-group:not([data-editor-section="conteudo"]) { display:none; }
+  .controls-panel[data-editor-section="previa"] { display:none; }
+}
