@@ -13,6 +13,9 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="mobile.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
   <header class="topbar">
@@ -41,8 +44,14 @@
   </header>
 
   <main class="workspace">
-    <!-- Painel Esquerdo: Controles -->
-    <aside class="controls-panel">
+    <!-- Painel de edição com navegação por etapas -->
+    <aside class="controls-panel" id="controls-panel">
+      <nav class="editor-tabs" aria-label="Etapas do editor">
+        <button type="button" class="editor-tab active" data-editor-tab="modelos">Modelos</button>
+        <button type="button" class="editor-tab" data-editor-tab="personalizacao">Personalização</button>
+        <button type="button" class="editor-tab" data-editor-tab="conteudo">Conteúdo</button>
+        <button type="button" class="editor-tab" data-editor-tab="previa">Prévia</button>
+      </nav>
       <section class="control-group">
         <div class="section-row">
           <h2>1. Modelo de Post (35)</h2>
@@ -147,6 +156,11 @@
           <label class="field">
             <span>Tamanho do Texto (<strong id="font-scale-label">100%</strong>)</span>
             <input id="font-scale" type="range" min="85" max="120" step="5" value="100" />
+          </label>
+          <label class="field manuscript-control">
+            <span>Estilo de escrita</span>
+            <span class="toggle-line"><input id="manuscript-mode" type="checkbox" /> Simular escrita à mão em todos os textos</span>
+            <small>Desative a qualquer momento para voltar à fonte original.</small>
           </label>
         </div>
 
@@ -453,16 +467,25 @@ Controle de Constitucionalidade</textarea>
     </aside>
 
     <!-- Painel Direito: Preview ao Vivo -->
-    <section class="preview-panel">
+    <section class="preview-panel" id="preview-panel">
       <div class="preview-header">
         <span id="preview-dimensions">1080 × 1350 px (Feed Retrato 4:5)</span>
-        <span class="preview-tip">Atualização em tempo real</span>
+        <div class="preview-actions">
+          <span class="preview-tip">Atualização em tempo real</span>
+          <button type="button" id="btn-fullscreen-preview" class="btn btn-ghost">Tela cheia</button>
+        </div>
       </div>
       <div class="canvas-stage">
         <canvas id="post-canvas" width="1080" height="1350"></canvas>
       </div>
     </section>
   </main>
+  <button type="button" id="floating-preview-button" class="floating-preview-button" aria-label="Abrir prévia">Ver prévia</button>
+  <nav class="mobile-export-bar" aria-label="Ações de exportação">
+    <button type="button" id="mobile-preview-action">Prévia</button>
+    <button type="button" id="mobile-copy-action">Copiar</button>
+    <button type="button" id="mobile-download-action">Baixar PNG</button>
+  </nav>
 
   <script src="frases-motivacao.js"></script>
   <script src="templates-extra.js"></script>
