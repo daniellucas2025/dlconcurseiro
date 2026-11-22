@@ -2367,8 +2367,7 @@ function setEditorTab(tab) {
   document.body.classList.toggle("preview-mode", tab === "previa");
   document.querySelectorAll("[data-editor-tab]").forEach((b) => b.classList.toggle("active", b.dataset.editorTab === tab));
   $("mobile-preview-action").textContent = tab === "previa" ? "Editar" : "Prévia";
-  if (tab === "previa") $("preview-panel").scrollIntoView({ behavior: "smooth", block: "start" });
-  else panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 const editorGroups = [...document.querySelectorAll("#controls-panel > .control-group")];
 editorGroups.forEach((group, index) => {

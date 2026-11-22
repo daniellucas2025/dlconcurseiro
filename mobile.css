@@ -306,11 +306,12 @@ body.preview-mode .preview-panel { display:flex !important; width:100%; }
 @media (max-width:980px) {
   body.preview-mode #controls-panel {
     display:flex !important; visibility:visible !important; opacity:1 !important;
-    position:relative !important; flex-direction:column !important;
+    position:sticky !important; top:0 !important; flex-direction:column !important;
     flex:0 0 auto !important; width:100% !important; height:auto !important;
     min-height:0 !important; max-height:none !important; overflow:visible !important;
     transform:none !important; order:0 !important; z-index:1100 !important;
-    padding:8px 12px !important; margin:0 !important;
+    padding:max(8px, env(safe-area-inset-top)) 12px 8px !important; margin:0 !important;
+    background:var(--bg) !important;
   }
   body.preview-mode #controls-panel > .editor-tabs {
     display:grid !important; visibility:visible !important; opacity:1 !important;
