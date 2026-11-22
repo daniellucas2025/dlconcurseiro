@@ -2400,19 +2400,22 @@ $("btn-preset-example").addEventListener("click", loadExample);
 
 /* Navegação do editor por etapas */
 let lastNonPreviewTab = "modelos";
-function setEditorTab(tab) {
+function setEditorTab(tab, skipScroll = false) {
   if (tab !== "previa") lastNonPreviewTab = tab;
   const panel = $("controls-panel");
   panel.dataset.editorSection = tab;
   document.body.classList.toggle("preview-mode", tab === "previa");
   document.querySelectorAll("[data-editor-tab]").forEach((b) => b.classList.toggle("active", b.dataset.editorTab === tab));
   $("mobile-preview-action").textContent = tab === "previa" ? "Editar" : "Prévia";
-  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (!skipScroll) {
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 const editorGroups = [...document.querySelectorAll("#controls-panel > .control-group")];
 editorGroups.forEach((group, index) => {
   group.dataset.editorSection = index === 0 ? "modelos" : index === 1 ? "personalizacao" : "conteudo";
 });
+setEditorTab("modelos", true);
 document.querySelectorAll("[data-editor-tab]").forEach((button) => {
   button.addEventListener("click", () => setEditorTab(button.dataset.editorTab));
 });
