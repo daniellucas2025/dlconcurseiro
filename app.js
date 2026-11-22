@@ -2845,13 +2845,6 @@ $("plan-mode").addEventListener("change", (e) => {
   render();
 });
 
-loadBrandPrefs();
-restoreAutoDraft();
-switchTemplate(state.template);
-refreshDraftsDropdown();
-render();
-if (state.manuscriptMode && document.fonts?.load) document.fonts.load('600 34px "Caveat"').then(() => render()).catch(() => {});
-
 /* Rascunho automático local: restaura o trabalho mais recente neste dispositivo */
 const AUTO_DRAFT_KEY = "concursostudio_autosave_v1";
 let autoSaveTimer = null;
@@ -2911,4 +2904,13 @@ function restoreAutoDraft() {
 document.addEventListener("input", scheduleAutoSave, true);
 document.addEventListener("change", scheduleAutoSave, true);
 window.addEventListener("beforeunload", saveAutoDraft);
+document.addEventListener("click", (event) => {
+  if (event.target.closest(".tab-btn, .pill-btn, [data-editor-tab], #btn-preset-example")) scheduleAutoSave();
+});
 
+loadBrandPrefs();
+restoreAutoDraft();
+switchTemplate(state.template);
+refreshDraftsDropdown();
+render();
+if (state.manuscriptMode && document.fonts?.load) document.fonts.load('600 34px "Caveat"').then(() => render()).catch(() => {});
