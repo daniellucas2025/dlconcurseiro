@@ -240,3 +240,41 @@ body.preview-mode .preview-panel { display:flex !important; width:100%; }
 @media (min-width:981px) {
   .controls-panel.editor-collapsed { width:100%; max-width:100%; }
 }
+
+
+/* A navegação por etapas permanece visível também durante a prévia no celular */
+@media (max-width:980px) {
+  body.preview-mode .controls-panel {
+    display:flex !important;
+    order:0 !important;
+    width:100% !important;
+    max-height:none !important;
+    overflow:visible !important;
+    padding: max(8px, env(safe-area-inset-top)) 12px 8px !important;
+    gap:0 !important;
+    background:var(--bg);
+    border:0;
+  }
+  body.preview-mode .controls-panel .editor-tabs {
+    display:grid !important;
+    position:sticky;
+    top:0;
+    width:100%;
+    margin:0;
+  }
+  body.preview-mode .controls-panel .control-group,
+  body.preview-mode .controls-panel .collapse-editor-button {
+    display:none !important;
+  }
+  body.preview-mode .preview-panel {
+    order:1 !important;
+    display:flex !important;
+    width:100% !important;
+  }
+  body.preview-mode .preview-panel.is-fullscreen {
+    z-index:1000 !important;
+  }
+  body.preview-mode .preview-panel.is-fullscreen ~ .controls-panel {
+    display:none !important;
+  }
+}
