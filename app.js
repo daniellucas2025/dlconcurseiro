@@ -354,35 +354,39 @@ function drawSafeGuides(w, h) {
   ctx.restore();
 }
 
-function drawVectorLogo(cx, cy, radius, pal, labelText) {
-  ctx.save();
+function drawVectorLogo(cx, cy, radius, pal, labelText, targetCtx = ctx) {
+  targetCtx.save();
   // Fundo circular
-  ctx.fillStyle = pal.bgTop;
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.fill();
+  targetCtx.fillStyle = pal.bgTop;
+  targetCtx.beginPath();
+  targetCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+  targetCtx.fill();
 
   // Anel externo segmentado
-  ctx.strokeStyle = pal.accent;
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius - 5, -Math.PI * 0.85, Math.PI * 0.45);
-  ctx.stroke();
+  const ringW = Math.max(3, Math.round(radius * 0.095));
+  const ringR = radius - Math.max(5, Math.round(radius * 0.12));
+  targetCtx.strokeStyle = pal.accent;
+  targetCtx.lineWidth = ringW;
+  targetCtx.beginPath();
+  targetCtx.arc(cx, cy, ringR, -Math.PI * 0.85, Math.PI * 0.45);
+  targetCtx.stroke();
 
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius - 5, Math.PI * 0.6, Math.PI * 1.0);
-  ctx.stroke();
+  targetCtx.beginPath();
+  targetCtx.arc(cx, cy, ringR, Math.PI * 0.6, Math.PI * 1.0);
+  targetCtx.stroke();
 
   // Monograma estilizado (ex: DL)
   const chars = (labelText || "DL").slice(0, 2).toUpperCase();
-  ctx.font = "900 32px Inter, Segoe UI, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = pal.text;
-  ctx.fillText(chars[0] || "D", cx - 10, cy + 2);
-  ctx.fillStyle = pal.accent;
-  ctx.fillText(chars[1] || "L", cx + 11, cy + 2);
-  ctx.restore();
+  const fontSize = Math.round(radius * 0.76);
+  const offset = Math.round(radius * 0.24);
+  targetCtx.font = `900 ${fontSize}px Inter, Segoe UI, sans-serif`;
+  targetCtx.textAlign = "center";
+  targetCtx.textBaseline = "middle";
+  targetCtx.fillStyle = pal.text;
+  targetCtx.fillText(chars[0] || "D", cx - offset, cy + Math.round(radius * 0.04));
+  targetCtx.fillStyle = pal.accent;
+  targetCtx.fillText(chars[1] || "L", cx + offset, cy + Math.round(radius * 0.04));
+  targetCtx.restore();
 }
 
 function drawProfileHeader(theme, w, padX, topY) {
@@ -2409,14 +2413,43 @@ const editorGroups = [...document.querySelectorAll("#controls-panel > .control-g
 editorGroups.forEach((group, index) => {
   group.dataset.editorSection = index === 0 ? "modelos" : index === 1 ? "personalizacao" : "conteudo";
 });
-$("btn-collapse-editor").addEventListener("click", () => {
-  const panel = $("controls-panel");
-  const collapsed = panel.classList.toggle("editor-collapsed");
-  $("btn-collapse-editor").textContent = collapsed ? "Expandir painel de edição" : "Recolher painel de edição";
-  $("btn-collapse-editor").setAttribute("aria-expanded", String(!collapsed));
-});
 document.querySelectorAll("[data-editor-tab]").forEach((button) => {
   button.addEventListener("click", () => setEditorTab(button.dataset.editorTab));
+});
+
+$("btn-export-logo")?.addEventListener("click", () => {
+  const size = 1080;
+  const off = document.createElement("canvas");
+  off.width = size;
+  off.height = size;
+  const octx = off.getContext("2d");
+
+  const handle = $("profile-handle").value.trim() || "@dlconcurseiro";
+  const initial = (handle.replace("@", "").slice(0, 2) || "DL").toUpperCase();
+
+  if (state.customAvatarUploaded && state.avatarImg) {
+    const img = state.avatarImg;
+    const scale = Math.max(size / img.width, size / img.height);
+    const dw = img.width * scale;
+    const dh = img.height * scale;
+    octx.drawImage(img, (size - dw) / 2, (size - dh) / 2, dw, dh);
+  } else if (state.logoTheme === "original" && state.avatarImg) {
+    const img = state.avatarImg;
+    const scale = Math.max(size / img.width, size / img.height);
+    const dw = img.width * scale;
+    const dh = img.height * scale;
+    octx.drawImage(img, (size - dw) / 2, (size - dh) / 2, dw, dh);
+  } else {
+    const logoPal = THEMES[state.logoTheme] || getActiveTheme();
+    octx.fillStyle = logoPal.bgTop;
+    octx.fillRect(0, 0, size, size);
+    drawVectorLogo(size / 2, size / 2, 430, logoPal, initial, octx);
+  }
+
+  const link = document.createElement("a");
+  link.download = `dlconcurseiro-logo-${state.logoTheme}.png`;
+  link.href = off.toDataURL("image/png");
+  link.click();
 });
 $("floating-preview-button").addEventListener("click", () => setEditorTab("previa"));
 $("mobile-preview-action").addEventListener("click", () => {
