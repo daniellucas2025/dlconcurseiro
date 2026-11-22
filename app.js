@@ -1,5 +1,15 @@
 const canvas = document.getElementById("post-canvas");
 const ctx = canvas.getContext("2d");
+const nativeFillText = ctx.fillText.bind(ctx);
+const nativeMeasureText = ctx.measureText.bind(ctx);
+function withCanvasFont(fn, args) {
+  if (!state.manuscriptMode) return fn(...args);
+  const previous = ctx.font;
+  ctx.font = previous.replace(/Inter, Segoe UI, sans-serif|sans-serif$/, '"Caveat", cursive');
+  try { return fn(...args); } finally { ctx.font = previous; }
+}
+ctx.fillText = (...args) => withCanvasFont(nativeFillText, args);
+ctx.measureText = (...args) => withCanvasFont(nativeMeasureText, args);
 
 const FORMATS = {
   portrait: { w: 1080, h: 1350, label: "1080 × 1350 px (Feed Retrato 4:5)" },
@@ -147,6 +157,7 @@ const state = {
   fontScale: 1,
   avatarImg: null,
   customAvatarUploaded: false,
+  manuscriptMode: false,
 };
 
 function getActiveTheme() {
@@ -2290,6 +2301,13 @@ $("btn-reset-accent").addEventListener("click", () => {
   render();
 });
 
+$("manuscript-mode").addEventListener("change", (e) => {
+  state.manuscriptMode = e.target.checked;
+  if (state.manuscriptMode && document.fonts?.load) {
+    document.fonts.load('600 34px "Caveat"').then(() => render()).catch(() => render());
+  } else render();
+});
+
 $("font-scale").addEventListener("input", (e) => {
   const pct = Number(e.target.value);
   state.fontScale = pct / 100;
@@ -2338,6 +2356,33 @@ $("btn-clear-avatar").addEventListener("click", () => {
 });
 
 $("btn-preset-example").addEventListener("click", loadExample);
+
+
+/* Navegação do editor por etapas */
+function setEditorTab(tab) {
+  const panel = $("controls-panel");
+  panel.dataset.editorSection = tab;
+  document.body.classList.toggle("preview-mode", tab === "previa");
+  document.querySelectorAll("[data-editor-tab]").forEach((b) => b.classList.toggle("active", b.dataset.editorTab === tab));
+  if (tab === "previa") $("preview-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+  else panel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+const editorGroups = [...document.querySelectorAll("#controls-panel > .control-group")];
+editorGroups.forEach((group, index) => {
+  group.dataset.editorSection = index === 0 ? "modelos" : index === 1 ? "personalizacao" : "conteudo";
+});
+document.querySelectorAll("[data-editor-tab]").forEach((button) => {
+  button.addEventListener("click", () => setEditorTab(button.dataset.editorTab));
+});
+$("floating-preview-button").addEventListener("click", () => setEditorTab("previa"));
+$("mobile-preview-action").addEventListener("click", () => setEditorTab("previa"));
+$("btn-fullscreen-preview").addEventListener("click", () => {
+  const panel = $("preview-panel");
+  const active = panel.classList.toggle("is-fullscreen");
+  $("btn-fullscreen-preview").textContent = active ? "Fechar tela cheia" : "Tela cheia";
+});
+$("mobile-copy-action").addEventListener("click", () => $("btn-copy-image").click());
+$("mobile-download-action").addEventListener("click", () => $("btn-download").click());
 
 function saveBrandPrefs() {
   try {
@@ -2801,5 +2846,69 @@ $("plan-mode").addEventListener("change", (e) => {
 });
 
 loadBrandPrefs();
+restoreAutoDraft();
+switchTemplate(state.template);
 refreshDraftsDropdown();
 render();
+if (state.manuscriptMode && document.fonts?.load) document.fonts.load('600 34px "Caveat"').then(() => render()).catch(() => {});
+
+/* Rascunho automático local: restaura o trabalho mais recente neste dispositivo */
+const AUTO_DRAFT_KEY = "concursostudio_autosave_v1";
+let autoSaveTimer = null;
+function saveAutoDraft() {
+  try {
+    const fields = {};
+    for (const id of [...DRAFT_FIELDS, "profile-handle", "profile-name"]) {
+      const el = $(id);
+      if (el) fields[id] = el.value;
+    }
+    localStorage.setItem(AUTO_DRAFT_KEY, JSON.stringify({
+      savedAt: Date.now(), template: state.template, slide: state.slide,
+      format: state.format, theme: state.theme, logoTheme: state.logoTheme,
+      bgPattern: state.bgPattern, bgDim: state.bgDim, planMode: state.planMode,
+      fontScale: state.fontScale, customAccent: state.customAccent,
+      manuscriptMode: state.manuscriptMode, fields, dynamicValues
+    }));
+  } catch (error) { console.warn("Não foi possível salvar o rascunho automático.", error); }
+}
+function scheduleAutoSave() {
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(saveAutoDraft, 450);
+}
+function restoreAutoDraft() {
+  try {
+    const raw = localStorage.getItem(AUTO_DRAFT_KEY);
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+    if (!draft || !draft.fields || Date.now() - draft.savedAt > 60 * 24 * 60 * 60 * 1000) return;
+    Object.entries(draft.fields).forEach(([id, value]) => { if ($(id)) $(id).value = value; });
+    if (draft.dynamicValues) {
+      Object.keys(draft.dynamicValues).forEach((key) => {
+        if (dynamicValues[key]) Object.assign(dynamicValues[key], draft.dynamicValues[key]);
+      });
+    }
+    ["format","theme","logoTheme","bgPattern","planMode"].forEach((key) => {
+      if (draft[key] !== undefined) state[key] = draft[key];
+    });
+    ["bgDim","fontScale","customAccent","manuscriptMode","slide"].forEach((key) => {
+      if (draft[key] !== undefined) state[key] = draft[key];
+    });
+    if (draft.template) state.template = draft.template;
+    ["format-select","theme-select","logo-theme-select","bg-pattern","plan-mode"].forEach((id) => {
+      const key = ({ "format-select":"format", "theme-select":"theme", "logo-theme-select":"logoTheme", "bg-pattern":"bgPattern", "plan-mode":"planMode" })[id];
+      if ($(id)) $(id).value = state[key];
+    });
+    if ($("font-scale")) $("font-scale").value = Math.round(state.fontScale * 100);
+    if ($("font-scale-label")) $("font-scale-label").textContent = Math.round(state.fontScale * 100) + "%";
+    if ($("bg-dim")) $("bg-dim").value = Math.round(state.bgDim * 100);
+    if ($("manuscript-mode")) $("manuscript-mode").checked = state.manuscriptMode;
+    if ($("accent-color") && state.customAccent) $("accent-color").value = state.customAccent;
+    if ($("slide-toggle-wrap")) {
+      document.querySelectorAll(".pill-btn").forEach((b) => b.classList.toggle("active", Number(b.dataset.slide) === state.slide));
+    }
+  } catch (error) { console.warn("Rascunho automático inválido.", error); }
+}
+document.addEventListener("input", scheduleAutoSave, true);
+document.addEventListener("change", scheduleAutoSave, true);
+window.addEventListener("beforeunload", saveAutoDraft);
+
