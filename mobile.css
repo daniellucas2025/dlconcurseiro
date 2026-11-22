@@ -324,6 +324,14 @@ body.preview-mode .preview-panel { display:flex !important; width:100%; }
   }
   body.preview-mode #controls-panel > .control-group,
   body.preview-mode #controls-panel > #btn-collapse-editor { display:none !important; }
+  body.preview-mode .workspace,
+  body.preview-mode #preview-panel,
+  body.preview-mode .canvas-stage {
+    min-width:0 !important;
+    max-width:100% !important;
+    box-sizing:border-box !important;
+    overflow-x:hidden !important;
+  }
   body.preview-mode #preview-panel {
     display:flex !important; position:relative !important; flex:1 1 auto !important;
     min-height:0 !important; width:100% !important;

@@ -265,9 +265,18 @@
           </label>
         </div>
         <label class="field">
-          <span>Enunciado da Questão</span>
+          <span>Enunciado da Questão (aceita Ctrl+V de imagem)</span>
           <textarea id="q-enunciado" rows="4">Acerca dos direitos e garantias fundamentais previstos na Constituição Federal, a casa é asilo inviolável do indivíduo, ninguém nela podendo penetrar sem consentimento do morador, SALVO:</textarea>
         </label>
+        <div class="field">
+          <span>Imagem no Enunciado (opcional)</span>
+          <div class="file-row">
+            <input id="q-enunc-img-input" type="file" accept="image/*" />
+            <button id="btn-paste-q-img" class="btn btn-secondary" type="button">Colar Print</button>
+            <button id="btn-clear-q-img" class="btn btn-ghost" type="button">Remover</button>
+          </div>
+          <small id="q-img-status" class="muted-hint">Nenhuma imagem anexada. Você também pode colar com Ctrl+V.</small>
+        </div>
         <div class="alternatives-inputs">
           <label class="field"><span>Alternativa A</span><input id="q-alt-a" type="text" value="A) Em caso de flagrante delito ou desastre, a qualquer hora." /></label>
           <label class="field"><span>Alternativa B</span><input id="q-alt-b" type="text" value="B) Por determinação judicial, durante a noite ou o dia." /></label>

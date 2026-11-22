@@ -158,6 +158,7 @@ const state = {
   avatarImg: null,
   customAvatarUploaded: false,
   manuscriptMode: false,
+  questionImg: null,
 };
 
 function getActiveTheme() {
@@ -513,8 +514,15 @@ function renderQuestao(theme, w, h) {
   let enuncLines = [];
   let enuncLineH = 0;
 
+  let imgRenderH = 0;
+  if (state.slide === 1 && state.questionImg) {
+    const maxImgH = isCompact ? 220 : (state.format === "story" ? 420 : 310);
+    const scale = Math.min(contentW / state.questionImg.width, maxImgH / state.questionImg.height, 1);
+    imgRenderH = Math.round(state.questionImg.height * scale);
+  }
+
   if (state.slide === 1) {
-    for (let step = 0; step < 4; step++) {
+    for (let step = 0; step < 5; step++) {
       ctx.font = `700 ${enuncSize}px Inter, Segoe UI, sans-serif`;
       enuncLines = wrapText(ctx, enunciado, contentW);
       enuncLineH = Math.round(enuncSize * 1.32);
@@ -524,13 +532,15 @@ function renderQuestao(theme, w, h) {
       const altLineH = Math.round(altSize * 1.34);
       for (const alt of alts) {
         const lines = wrapText(ctx, alt.text, contentW - 56);
-        totalAltH += Math.max(82, lines.length * altLineH + 36) + 16;
+        totalAltH += Math.max(74, lines.length * altLineH + 34) + 14;
       }
 
-      const estimatedBottom = cursorY + enuncLines.length * enuncLineH + 28 + totalAltH;
+      const imgBlock = imgRenderH > 0 ? imgRenderH + 24 : 0;
+      const estimatedBottom = cursorY + enuncLines.length * enuncLineH + 24 + imgBlock + totalAltH;
       if (estimatedBottom <= maxContentBottom) break;
       enuncSize -= 3;
       altSize -= 2;
+      if (imgRenderH > 160) imgRenderH = Math.round(imgRenderH * 0.85);
     }
   } else {
     ctx.font = `600 ${enuncSize}px Inter, Segoe UI, sans-serif`;
@@ -541,7 +551,28 @@ function renderQuestao(theme, w, h) {
   ctx.fillStyle = theme.text;
   ctx.font = `${state.slide === 1 ? 700 : 600} ${enuncSize}px Inter, Segoe UI, sans-serif`;
   ctx.textBaseline = "top";
-  cursorY = drawWrappedLines(ctx, enuncLines, padX, cursorY, enuncLineH) + 28;
+  cursorY = drawWrappedLines(ctx, enuncLines, padX, cursorY, enuncLineH) + 22;
+
+  if (state.slide === 1 && state.questionImg && imgRenderH > 0) {
+    const img = state.questionImg;
+    const scale = Math.min(contentW / img.width, imgRenderH / img.height);
+    const drawW = Math.round(img.width * scale);
+    const drawH = Math.round(img.height * scale);
+    const drawX = padX + Math.round((contentW - drawW) / 2);
+
+    ctx.save();
+    roundRect(ctx, drawX, cursorY, drawW, drawH, 16);
+    ctx.clip();
+    ctx.drawImage(img, drawX, cursorY, drawW, drawH);
+    ctx.restore();
+
+    ctx.strokeStyle = theme.cardBorder;
+    ctx.lineWidth = 2;
+    roundRect(ctx, drawX, cursorY, drawW, drawH, 16);
+    ctx.stroke();
+
+    cursorY += drawH + 22;
+  }
 
   if (state.slide === 1) {
     const altLineH = Math.round(altSize * 1.34);
@@ -2867,6 +2898,71 @@ $("btn-clear-bg").addEventListener("click", () => {
   state.bgPhotoImg = null;
   $("bg-photo-input").value = "";
   render();
+});
+
+function loadQuestionImageFromBlob(blob) {
+  if (!blob) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      state.questionImg = img;
+      if ($("q-img-status")) {
+        $("q-img-status").textContent = `Imagem anexada (${img.width}×${img.height} px)`;
+      }
+      render();
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(blob);
+}
+
+$("q-enunc-img-input")?.addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  if (file) loadQuestionImageFromBlob(file);
+});
+
+$("btn-clear-q-img")?.addEventListener("click", () => {
+  state.questionImg = null;
+  if ($("q-enunc-img-input")) $("q-enunc-img-input").value = "";
+  if ($("q-img-status")) {
+    $("q-img-status").textContent = "Nenhuma imagem anexada. Você também pode colar com Ctrl+V.";
+  }
+  render();
+});
+
+$("btn-paste-q-img")?.addEventListener("click", async () => {
+  const btn = $("btn-paste-q-img");
+  const orig = btn.textContent;
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      const imgType = item.types.find((t) => t.startsWith("image/"));
+      if (imgType) {
+        const blob = await item.getType(imgType);
+        loadQuestionImageFromBlob(blob);
+        btn.textContent = "Colada!";
+        setTimeout(() => { btn.textContent = orig; }, 1400);
+        return;
+      }
+    }
+    btn.textContent = "Sem imagem";
+  } catch (_) {
+    btn.textContent = "Use Ctrl+V";
+  }
+  setTimeout(() => { btn.textContent = orig; }, 1600);
+});
+
+$("fields-questao")?.addEventListener("paste", (e) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith("image/")) {
+      e.preventDefault();
+      loadQuestionImageFromBlob(item.getAsFile());
+      return;
+    }
+  }
 });
 
 $("bg-dim").addEventListener("input", (e) => {
