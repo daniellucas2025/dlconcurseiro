@@ -2181,6 +2181,7 @@ function switchTemplate(tpl) {
   $("fields-metas").classList.toggle("hidden", tpl !== "metas");
   $("fields-dynamic").classList.toggle("hidden", !isDyn);
   $("slide-toggle-wrap").classList.toggle("hidden", tpl !== "questao");
+  updateDownloadLabels(tpl);
   if (isDyn) renderDynamicFields(tpl);
   render();
 }
@@ -2641,6 +2642,18 @@ function buildInstagramCaption() {
   );
 }
 
+const MULTI_SLIDE_TEMPLATES = new Set(["questao"]);
+
+function updateDownloadLabels(tpl) {
+  const isMulti = MULTI_SLIDE_TEMPLATES.has(tpl);
+  if ($("btn-download")) {
+    $("btn-download").textContent = isMulti ? "Baixar PNG (2 Slides)" : "Baixar PNG (1080px)";
+  }
+  if ($("mobile-download-action")) {
+    $("mobile-download-action").textContent = isMulti ? "Baixar 2 PNGs" : "Baixar PNG";
+  }
+}
+
 function downloadCurrentCanvas(filename) {
   render(true);
   const link = document.createElement("a");
@@ -2651,8 +2664,20 @@ function downloadCurrentCanvas(filename) {
 }
 
 $("btn-download").addEventListener("click", () => {
-  const suffix = state.template === "questao" ? `-slide${state.slide}` : "";
-  downloadCurrentCanvas(`dlconcurseiro-${state.template}${suffix}-${state.format}.png`);
+  if (MULTI_SLIDE_TEMPLATES.has(state.template)) {
+    const prevSlide = state.slide;
+    state.slide = 1;
+    downloadCurrentCanvas(`dlconcurseiro-${state.template}-slide1-pergunta-${state.format}.png`);
+
+    setTimeout(() => {
+      state.slide = 2;
+      downloadCurrentCanvas(`dlconcurseiro-${state.template}-slide2-gabarito-${state.format}.png`);
+      state.slide = prevSlide;
+      render(false);
+    }, 320);
+    return;
+  }
+  downloadCurrentCanvas(`dlconcurseiro-${state.template}-${state.format}.png`);
 });
 
 $("btn-copy-image").addEventListener("click", () => {
