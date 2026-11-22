@@ -246,11 +246,11 @@
           </button>
         </div>
 
-        <details class="quick-paste">
-          <summary>Colar questão bruta (Auto-preencher A–E)</summary>
+        <details class="quick-paste" open>
+          <summary>Importar Questão (Cole o texto do TEC / QConcursos ou Link)</summary>
           <div class="quick-paste-body">
-            <textarea id="q-raw-paste" rows="4" placeholder="Cole aqui o enunciado + alternativas A) ... B) ... C) ... D) ... E) ..."></textarea>
-            <button id="btn-parse-raw" class="btn btn-secondary" type="button">Extrair Enunciado e Alternativas</button>
+            <textarea id="q-raw-paste" rows="4" placeholder="Cole aqui a questão copiada do TEC Concursos (com Banca, Ano, Cargo, Enunciado e A–E) ou o link da questão..."></textarea>
+            <button id="btn-parse-raw" class="btn btn-secondary" type="button">Extrair Dados da Questão</button>
           </div>
         </details>
 
@@ -260,7 +260,7 @@
             <input id="q-banca" type="text" value="CEBRASPE • 2026" />
           </label>
           <label class="field">
-            <span>Matéria / Assunto</span>
+            <span>Cargo / Órgão ou Matéria</span>
             <input id="q-materia" type="text" value="Direito Constitucional" />
           </label>
         </div>

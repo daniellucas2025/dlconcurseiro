@@ -2596,82 +2596,194 @@ function deleteSelectedDraft() {
   refreshDraftsDropdown();
 }
 
-function parseRawQuestion() {
+async function tryFetchQuestionFromUrl(url) {
+  const btn = $("btn-parse-raw");
+  const orig = "Extrair Dados da Questão";
+  if (btn) btn.textContent = "Buscando link...";
+
+  const proxies = [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  ];
+
+  for (const proxyUrl of proxies) {
+    try {
+      const res = await fetch(proxyUrl);
+      if (!res.ok) continue;
+      const html = await res.text();
+      if (!html || /just a moment|cloudflare|cf-browser-verification/i.test(html)) continue;
+
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const textContent = (doc.body?.innerText || "").trim();
+      if (textContent.length > 80 && /\b[A-E]\b/.test(textContent)) {
+        $("q-raw-paste").value = textContent;
+        parseRawQuestion(true);
+        return;
+      }
+    } catch (_) {}
+  }
+
+  if (btn) {
+    btn.textContent = "TEC bloqueou o link direto — cole o texto (Ctrl+C)";
+    setTimeout(() => { btn.textContent = orig; }, 3200);
+  }
+}
+
+function matchAltMarker(line, letter) {
+  const standaloneRe = new RegExp(`^\\(?\\[?${letter}\\]?(?:[).:\\-–—])?$`, "i");
+  if (standaloneRe.test(line)) {
+    return { matched: true, rest: "" };
+  }
+  const inlineRe = new RegExp(`^\\(?\\[?${letter}\\]?(?:\\)\\s*|\\.(?=\\s)|\\s*[-–—:]\\s+)(.+)$`, "i");
+  const m = line.match(inlineRe);
+  if (m) {
+    return { matched: true, rest: m[1].trim() };
+  }
+  return { matched: false, rest: "" };
+}
+
+function parseRawQuestion(fromUrlFetch = false) {
   let raw = $("q-raw-paste").value.replace(/\r\n/g, "\n").trim();
   if (!raw) return;
 
-  // 1. Detecta gabarito no final (ex: "Gabarito: B" ou "Resposta: Letra C")
+  // Se o usuário colou apenas um link (ex: https://www.tecconcursos.com.br/questoes/335663)
+  if (!fromUrlFetch && /^https?:\/\/\S+$/i.test(raw)) {
+    tryFetchQuestionFromUrl(raw);
+    return;
+  }
+
+  // 1. Converte links em Markdown [texto](https://...) para apenas "texto"
+  raw = raw.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, "$1");
+
+  // 2. Detecta gabarito no final (ex: "Gabarito: B" ou "Resposta: Letra C")
   const gabMatch = raw.match(/(?:^|\n)\s*(?:gabarito|resposta)\s*[:\-]?\s*(?:letra\s*)?([A-Ea-e])\b[^\n]*$/i);
   if (gabMatch) {
     $("q-gabarito").value = gabMatch[1].toUpperCase();
     raw = raw.slice(0, gabMatch.index).trim();
   }
 
-  // 2. Remove linhas de ruído comuns de cópia do TEC / QConcursos / Gran
+  // 3. Remove linhas de ruído comuns de cópia do TEC / QConcursos / Gran
   const noiseLineRe = /^(?:responder|pular|estatísticas|comentários|cadernos|anotações|notificar erro|texto associado|salvar|q\d{5,}|#\d{5,})$/i;
-  const rawLines = raw.split("\n").filter((l) => !noiseLineRe.test(l.trim()));
+  const rawLines = raw
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0 && !noiseLineRe.test(l));
 
-  // 3. Tenta extrair Banca + Ano das primeiras 3 linhas
+  // 4. Detecta cabeçalho padrão do TEC Concursos:
+  // Ex: "#335663 CEBRASPE (CESPE) - 2016 - Analista Judiciário (TRT 8ª Região)/Administrativa/\"Sem Especialidade\""
+  const tecHeaderRe = /^(?:#?\d+\s+)?([A-Za-zÀ-ÿ0-9\s().]+?)\s*[-–]\s*(20\d{2}|19\d{2})\s*[-–]\s*(.+)$/;
   const boardRe = /\b(FGV|CEBRASPE|CESPE|FCC|VUNESP|IBFC|QUADRIX|INSTITUTO AOCP|AOCP|IDECAN|CONSULPLAN|FUNDATEC|IADES|CESGRANRIO|SELECON|FEPESE|FUMARC)\b/i;
-  const yearRe = /\b(20[1-2][0-9])\b/;
+  const yearRe = /\b(20[0-2][0-9]|199[0-9])\b/;
+
   for (let i = 0; i < Math.min(3, rawLines.length); i++) {
-    const line = rawLines[i].trim();
+    const line = rawLines[i];
+    const tecMatch = line.match(tecHeaderRe);
+    if (tecMatch) {
+      const rawBoard = tecMatch[1].replace(/^#?\d+\s*/, "").trim();
+      const shortBoard = rawBoard.replace(/\s*\([^)]*\)/g, "").trim() || rawBoard;
+      const year = tecMatch[2];
+      let cargo = tecMatch[3]
+        .replace(/\/?\s*["“”]?Sem Especialidade["“”]?/gi, "")
+        .replace(/\s*\/\s*/g, " • ")
+        .trim();
+      $("q-banca").value = `${shortBoard.toUpperCase()} • ${year}`;
+      if (cargo) $("q-materia").value = cargo;
+      rawLines.splice(i, 1);
+      break;
+    }
+
     const bMatch = line.match(boardRe);
     const yMatch = line.match(yearRe);
-    if (bMatch && (yMatch || /ano\s*:/i.test(line) || /banca\s*:/i.test(line) || line.length < 110)) {
+    if (bMatch && (yMatch || /ano\s*:/i.test(line) || /banca\s*:/i.test(line) || line.length < 120)) {
       const boardName = bMatch[1].toUpperCase();
       $("q-banca").value = yMatch ? `${boardName} • ${yMatch[1]}` : boardName;
-      if (/^ano\s*:|^banca\s*:|^\w+\s*[-–•|/]\s*20\d{2}/i.test(line)) {
-        rawLines.splice(i, 1);
+      const afterYear = yMatch ? line.slice(line.indexOf(yMatch[1]) + 4).replace(/^[\s\-–•|/]+/, "").trim() : "";
+      if (afterYear) {
+        $("q-materia").value = afterYear
+          .replace(/\/?\s*["“”]?Sem Especialidade["“”]?/gi, "")
+          .replace(/\s*\/\s*/g, " • ")
+          .trim();
       }
+      rawLines.splice(i, 1);
       break;
     }
   }
-  raw = rawLines.join("\n").trim();
 
-  // 4. Suporta: (A) txt | A) txt | A. txt | A - txt | A – txt | A\ntxt (início de linha ou após espaço)
-  const altRegex = /(?:^|\n)\s*\(?([A-Ea-e])(?:\)\s*|\.(?=\s)|\s*[-–—:]\s*|\s*\n(?=\S))/g;
-  let matches = [...raw.matchAll(altRegex)];
-
-  // Fallback: alternativas na mesma linha (ex: "A) xxx B) yyy C) zzz")
-  if (matches.length < 2) {
-    const inlineRegex = /(?:^|\s)\(?([A-Ea-e])\)\s+/g;
-    const inlineMatches = [...raw.matchAll(inlineRegex)];
-    if (inlineMatches.length >= 2) matches = inlineMatches;
-  }
-
-  // Filtra para manter apenas sequência válida começando em A (A, B, C...)
-  const firstA = matches.findIndex((m) => m[1].toUpperCase() === "A");
-  if (firstA !== -1) {
-    matches = matches.slice(firstA);
+  // 5. Parser sequencial linha a linha para alternativas A, B, C, D, E (suporta letra isolada na linha ou A) texto)
+  const letters = ["A", "B", "C", "D", "E"];
+  let idxA = -1;
+  let idxB = -1;
+  for (let i = 0; i < rawLines.length; i++) {
+    if (idxA === -1 && matchAltMarker(rawLines[i], "A").matched) {
+      idxA = i;
+    } else if (idxA !== -1 && matchAltMarker(rawLines[i], "B").matched) {
+      idxB = i;
+      break;
+    }
   }
 
   const map = { A: "", B: "", C: "", D: "", E: "" };
   let count = 0;
 
-  if (matches.length >= 2) {
-    const enunciado = raw.slice(0, matches[0].index).trim();
-    if (enunciado) $("q-enunciado").value = enunciado;
+  if (idxA !== -1 && idxB !== -1) {
+    const enuncText = rawLines.slice(0, idxA).join("\n").trim();
+    if (enuncText) $("q-enunciado").value = enuncText;
 
-    for (let i = 0; i < matches.length; i++) {
-      const letter = matches[i][1].toUpperCase();
-      const start = matches[i].index + matches[i][0].length;
-      const end = i + 1 < matches.length ? matches[i + 1].index : raw.length;
-      const body = raw.slice(start, end).replace(/\s+/g, " ").trim();
-      if (letter in map && !map[letter] && body) {
-        map[letter] = `${letter}) ${body}`;
+    let expectedIdx = 0;
+    let currentLetter = null;
+    const buckets = { A: [], B: [], C: [], D: [], E: [] };
+
+    for (let i = idxA; i < rawLines.length; i++) {
+      const line = rawLines[i];
+      const nextLetter = letters[expectedIdx];
+      if (nextLetter) {
+        const m = matchAltMarker(line, nextLetter);
+        if (m.matched) {
+          currentLetter = nextLetter;
+          expectedIdx++;
+          if (m.rest) buckets[currentLetter].push(m.rest);
+          continue;
+        }
+      }
+      if (currentLetter) {
+        buckets[currentLetter].push(line);
+      }
+    }
+
+    for (const l of letters) {
+      const text = buckets[l].join(" ").replace(/\s+/g, " ").trim();
+      if (text) {
+        map[l] = `${l}) ${text}`;
         count++;
       }
     }
-  } else if (/\n\s*(?:\(\s*\)\s*)?certo\s*\n\s*(?:\(\s*\)\s*)?errado\s*$/i.test(raw)) {
-    // Suporte a Certo / Errado colado direto
-    const ceIdx = raw.search(/\n\s*(?:\(\s*\)\s*)?certo\s*\n\s*(?:\(\s*\)\s*)?errado\s*$/i);
-    $("q-enunciado").value = raw.slice(0, ceIdx).trim();
-    map.A = "A) CERTO";
-    map.B = "B) ERRADO";
-    count = 2;
   } else {
-    $("q-enunciado").value = raw;
+    // Fallback: alternativas na mesma linha (ex: "A) xxx B) yyy C) zzz")
+    const joined = rawLines.join("\n");
+    const inlineRegex = /(?:^|\s)\(?([A-Ea-e])\)\s+/g;
+    const inlineMatches = [...joined.matchAll(inlineRegex)];
+    if (inlineMatches.length >= 2) {
+      const enunciado = joined.slice(0, inlineMatches[0].index).trim();
+      if (enunciado) $("q-enunciado").value = enunciado;
+      for (let i = 0; i < inlineMatches.length; i++) {
+        const letter = inlineMatches[i][1].toUpperCase();
+        const start = inlineMatches[i].index + inlineMatches[i][0].length;
+        const end = i + 1 < inlineMatches.length ? inlineMatches[i + 1].index : joined.length;
+        const body = joined.slice(start, end).replace(/\s+/g, " ").trim();
+        if (letter in map && !map[letter] && body) {
+          map[letter] = `${letter}) ${body}`;
+          count++;
+        }
+      }
+    } else if (/\n\s*(?:\(\s*\)\s*)?certo\s*\n\s*(?:\(\s*\)\s*)?errado\s*$/i.test(joined)) {
+      const ceIdx = joined.search(/\n\s*(?:\(\s*\)\s*)?certo\s*\n\s*(?:\(\s*\)\s*)?errado\s*$/i);
+      $("q-enunciado").value = joined.slice(0, ceIdx).trim();
+      map.A = "A) CERTO";
+      map.B = "B) ERRADO";
+      count = 2;
+    } else {
+      $("q-enunciado").value = joined;
+    }
   }
 
   $("q-alt-a").value = map.A;
@@ -2682,7 +2794,7 @@ function parseRawQuestion() {
 
   const btn = $("btn-parse-raw");
   if (btn) {
-    const orig = "Extrair Enunciado e Alternativas";
+    const orig = "Extrair Dados da Questão";
     btn.textContent = count > 0 ? `Extraído (${count} alt.)!` : "Enunciado preenchido!";
     setTimeout(() => { btn.textContent = orig; }, 1800);
   }
