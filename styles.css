@@ -428,6 +428,34 @@ body {
   font-weight: 600;
 }
 
+.preview-slide-bar {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px 8px;
+}
+
+.preview-slide-pills {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.slide-nav-btn {
+  padding: 7px 11px;
+  font-size: 12px;
+  min-height: 36px;
+}
+
 .canvas-stage {
   background: #060913;
   border: 1px solid var(--border);

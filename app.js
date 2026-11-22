@@ -2218,7 +2218,8 @@ function switchTemplate(tpl) {
   $("fields-checklist").classList.toggle("hidden", tpl !== "checklist");
   $("fields-metas").classList.toggle("hidden", tpl !== "metas");
   $("fields-dynamic").classList.toggle("hidden", !isDyn);
-  $("slide-toggle-wrap").classList.toggle("hidden", tpl !== "questao");
+  state.slide = 1;
+  updateSlideNavUI(tpl);
   updateDownloadLabels(tpl);
   if (isDyn) renderDynamicFields(tpl);
   render();
@@ -2304,15 +2305,41 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
   btn.addEventListener("click", () => switchTemplate(btn.dataset.template));
 });
 
-document.querySelectorAll(".pill-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    state.slide = Number(btn.dataset.slide);
-    document.querySelectorAll(".pill-btn").forEach((b) => {
-      b.classList.toggle("active", Number(b.dataset.slide) === state.slide);
-    });
-    render();
-  });
+document.querySelectorAll("#slide-toggle-wrap .pill-btn").forEach((btn) => {
+  btn.addEventListener("click", () => setSlide(Number(btn.dataset.slide)));
 });
+
+$("btn-prev-slide")?.addEventListener("click", () => {
+  const slides = getTemplateSlides(state.template);
+  if (slides.length <= 1) return;
+  const next = state.slide > 1 ? state.slide - 1 : slides.length;
+  setSlide(next);
+});
+
+$("btn-next-slide")?.addEventListener("click", () => {
+  const slides = getTemplateSlides(state.template);
+  if (slides.length <= 1) return;
+  const next = state.slide < slides.length ? state.slide + 1 : 1;
+  setSlide(next);
+});
+
+let touchStartX = null;
+canvas.addEventListener("touchstart", (e) => {
+  if (e.touches.length === 1) touchStartX = e.touches[0].clientX;
+}, { passive: true });
+
+canvas.addEventListener("touchend", (e) => {
+  if (touchStartX === null || !e.changedTouches.length) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  touchStartX = null;
+  const slides = getTemplateSlides(state.template);
+  if (slides.length <= 1 || Math.abs(dx) < 45) return;
+  if (dx < 0) {
+    setSlide(state.slide < slides.length ? state.slide + 1 : 1);
+  } else {
+    setSlide(state.slide > 1 ? state.slide - 1 : slides.length);
+  }
+}, { passive: true });
 
 $("format-select").addEventListener("change", (e) => {
   state.format = e.target.value;
@@ -2886,15 +2913,68 @@ function buildInstagramCaption() {
   );
 }
 
-const MULTI_SLIDE_TEMPLATES = new Set(["questao"]);
+const TEMPLATE_SLIDES = {
+  questao: [
+    { slide: 1, label: "Pág. 1 (Pergunta)", fileSlug: "slide1-pergunta" },
+    { slide: 2, label: "Pág. 2 (Gabarito)", fileSlug: "slide2-gabarito" },
+  ],
+};
+
+function getTemplateSlides(tpl) {
+  return TEMPLATE_SLIDES[tpl] || [{ slide: 1, label: "Pág. 1", fileSlug: "slide1" }];
+}
+
+function isMultiSlideTemplate(tpl) {
+  return getTemplateSlides(tpl).length > 1;
+}
+
+function setSlide(slideNum) {
+  const slides = getTemplateSlides(state.template);
+  const maxSlide = slides.length;
+  const clamped = Math.max(1, Math.min(maxSlide, Number(slideNum) || 1));
+  state.slide = clamped;
+  updateSlideNavUI(state.template);
+  render();
+}
+
+function updateSlideNavUI(tpl) {
+  const slides = getTemplateSlides(tpl);
+  const isMulti = slides.length > 1;
+
+  if ($("slide-toggle-wrap")) {
+    $("slide-toggle-wrap").classList.toggle("hidden", !isMulti);
+    document.querySelectorAll("#slide-toggle-wrap .pill-btn").forEach((b) => {
+      b.classList.toggle("active", Number(b.dataset.slide) === state.slide);
+    });
+  }
+
+  const bar = $("preview-slide-bar");
+  if (bar) {
+    bar.classList.toggle("hidden", !isMulti);
+    const pillsWrap = $("preview-slide-pills");
+    if (pillsWrap && isMulti) {
+      pillsWrap.innerHTML = "";
+      for (const s of slides) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `pill-btn${s.slide === state.slide ? " active" : ""}`;
+        btn.dataset.slide = String(s.slide);
+        btn.textContent = s.label;
+        btn.addEventListener("click", () => setSlide(s.slide));
+        pillsWrap.appendChild(btn);
+      }
+    }
+  }
+}
 
 function updateDownloadLabels(tpl) {
-  const isMulti = MULTI_SLIDE_TEMPLATES.has(tpl);
+  const slides = getTemplateSlides(tpl);
+  const isMulti = slides.length > 1;
   if ($("btn-download")) {
-    $("btn-download").textContent = isMulti ? "Baixar PNG (2 Slides)" : "Baixar PNG (1080px)";
+    $("btn-download").textContent = isMulti ? `Baixar PNG (${slides.length} Slides)` : "Baixar PNG (1080px)";
   }
   if ($("mobile-download-action")) {
-    $("mobile-download-action").textContent = isMulti ? "Baixar 2 PNGs" : "Baixar PNG";
+    $("mobile-download-action").textContent = isMulti ? `Baixar ${slides.length} PNGs` : "Baixar PNG";
   }
 }
 
@@ -2908,17 +2988,20 @@ function downloadCurrentCanvas(filename) {
 }
 
 $("btn-download").addEventListener("click", () => {
-  if (MULTI_SLIDE_TEMPLATES.has(state.template)) {
+  const slides = getTemplateSlides(state.template);
+  if (slides.length > 1) {
     const prevSlide = state.slide;
-    state.slide = 1;
-    downloadCurrentCanvas(`dlconcurseiro-${state.template}-slide1-pergunta-${state.format}.png`);
-
-    setTimeout(() => {
-      state.slide = 2;
-      downloadCurrentCanvas(`dlconcurseiro-${state.template}-slide2-gabarito-${state.format}.png`);
-      state.slide = prevSlide;
-      render(false);
-    }, 320);
+    slides.forEach((s, idx) => {
+      setTimeout(() => {
+        state.slide = s.slide;
+        downloadCurrentCanvas(`dlconcurseiro-${state.template}-${s.fileSlug}-${state.format}.png`);
+        if (idx === slides.length - 1) {
+          state.slide = prevSlide;
+          updateSlideNavUI(state.template);
+          render(false);
+        }
+      }, idx * 320);
+    });
     return;
   }
   downloadCurrentCanvas(`dlconcurseiro-${state.template}-${state.format}.png`);
