@@ -1,16 +1,21 @@
 {
+  "id": "./",
   "name": "ConcursoStudio — Gerador de Posts para Concursos",
   "short_name": "ConcursoStudio",
   "description": "Gerador de imagens para redes sociais no nicho de concursos públicos.",
-  "start_url": "./index.html",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#0b1020",
   "theme_color": "#0a1128",
+  "categories": ["productivity", "design"],
   "icons": [
     {
-      "src": "dl-concurseiro-logo.jpg",
-      "sizes": "512x512",
-      "type": "image/jpeg"
+      "src": "app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ]
 }
