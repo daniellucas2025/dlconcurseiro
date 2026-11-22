@@ -2374,6 +2374,12 @@ const editorGroups = [...document.querySelectorAll("#controls-panel > .control-g
 editorGroups.forEach((group, index) => {
   group.dataset.editorSection = index === 0 ? "modelos" : index === 1 ? "personalizacao" : "conteudo";
 });
+$("btn-collapse-editor").addEventListener("click", () => {
+  const panel = $("controls-panel");
+  const collapsed = panel.classList.toggle("editor-collapsed");
+  $("btn-collapse-editor").textContent = collapsed ? "Expandir painel de edição" : "Recolher painel de edição";
+  $("btn-collapse-editor").setAttribute("aria-expanded", String(!collapsed));
+});
 document.querySelectorAll("[data-editor-tab]").forEach((button) => {
   button.addEventListener("click", () => setEditorTab(button.dataset.editorTab));
 });
