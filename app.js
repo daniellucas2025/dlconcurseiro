@@ -104,6 +104,7 @@ const EXAMPLES = {
     salario: "R$ 13.900,54",
     escolaridade: "Nível Superior (Qualquer Área)",
     prazo: "Previsão: 1º Semestre",
+    prova: "Previsão: 2º Semestre",
     cta: "Marque um amigo que sonha com essa farda!",
   },
   rotina: {
@@ -675,27 +676,29 @@ function renderEdital(theme, w, h) {
     { label: "ESCOLARIDADE", value: $("e-escolaridade").value.trim() },
     { label: "BANCA", value: $("e-banca").value.trim() },
     { label: "INSCRIÇÕES", value: $("e-prazo").value.trim() },
+    { label: "DATA DA PROVA", value: $("e-prova").value.trim() },
   ].filter((i) => i.value.length > 0);
 
-  const boxH = isCompact ? 92 : 112;
-  const gap = isCompact ? 14 : 18;
-  const valSize = sc(isCompact ? 30 : 34);
+  const gap = isCompact ? 10 : 14;
+  const availH = bottom - 48 - cursorY;
+  const boxH = items.length ? Math.min(isCompact ? 80 : 102, Math.floor(availH / items.length) - gap) : 96;
+  const valSize = sc(boxH < 86 ? 26 : (isCompact ? 28 : 32));
 
   for (const item of items) {
     ctx.fillStyle = theme.card;
     ctx.strokeStyle = theme.cardBorder;
     ctx.lineWidth = 2;
-    roundRect(ctx, padX, cursorY, contentW, boxH, 20);
+    roundRect(ctx, padX, cursorY, contentW, boxH, 18);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = theme.accent;
-    ctx.font = "800 22px Inter, Segoe UI, sans-serif";
-    ctx.fillText(item.label, padX + 28, cursorY + (isCompact ? 16 : 20));
+    ctx.font = `800 ${boxH < 86 ? 18 : 21}px Inter, Segoe UI, sans-serif`;
+    ctx.fillText(item.label, padX + 28, cursorY + Math.round(boxH * 0.16));
 
     ctx.fillStyle = theme.text;
     ctx.font = `700 ${valSize}px Inter, Segoe UI, sans-serif`;
-    ctx.fillText(item.value, padX + 28, cursorY + (isCompact ? 46 : 54));
+    ctx.fillText(item.value, padX + 28, cursorY + Math.round(boxH * 0.46));
 
     cursorY += boxH + gap;
   }
@@ -2252,6 +2255,7 @@ function loadExample() {
     $("e-salario").value = ex.salario;
     $("e-escolaridade").value = ex.escolaridade;
     $("e-prazo").value = ex.prazo;
+    $("e-prova").value = ex.prova;
     $("e-cta").value = ex.cta;
   } else if (state.template === "rotina") {
     const ex = EXAMPLES.rotina;
@@ -2478,7 +2482,7 @@ function loadBrandPrefs() {
 
 const DRAFT_FIELDS = [
   "q-banca", "q-materia", "q-enunciado", "q-alt-a", "q-alt-b", "q-alt-c", "q-alt-d", "q-alt-e", "q-gabarito", "q-cta", "q-comentario",
-  "e-badge", "e-banca", "e-orgao", "e-vagas", "e-salario", "e-escolaridade", "e-prazo", "e-cta",
+  "e-badge", "e-banca", "e-orgao", "e-vagas", "e-salario", "e-escolaridade", "e-prazo", "e-prova", "e-cta",
   "r-tag", "r-metric", "r-title", "r-body", "r-footer",
   "c-tag", "c-title", "c-a-title", "c-a-body", "c-b-title", "c-b-body", "c-cta",
   "l-tag", "l-title", "l-items", "l-cta",
@@ -2624,12 +2628,15 @@ function buildInstagramCaption() {
     const salario = $("e-salario").value.trim();
     const banca = $("e-banca").value.trim();
     const prazo = $("e-prazo").value.trim();
+    const prova = $("e-prova").value.trim();
     return (
       `🚨 ${$("e-badge").value.trim()}: ${orgao}\n\n` +
       `📋 Vagas: ${vagas}\n` +
       `💰 Remuneração: ${salario}\n` +
       `🏛️ Banca: ${banca}\n` +
-      `📅 Inscrições: ${prazo}\n\n` +
+      `📅 Inscrições: ${prazo}\n` +
+      (prova ? `🗓️ Data da Prova: ${prova}\n` : "") +
+      `\n` +
       `Salve este post para não perder o prazo e envie para um amigo concurseiro! 🚀\n` +
       `Siga ${handle} para mais editais.\n\n` +
       `#editalaberto #concursopublico #concursos2026 #foconavaga #dlconcurseiro`
