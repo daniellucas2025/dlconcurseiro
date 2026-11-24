@@ -3230,6 +3230,25 @@ $("q-raw-paste")?.addEventListener("paste", () => {
   setTimeout(parseRawQuestion, 30);
 });
 
+$("btn-paste-raw-text")?.addEventListener("click", async () => {
+  const btn = $("btn-paste-raw-text");
+  const orig = btn.textContent;
+  try {
+    const text = await navigator.clipboard.readText();
+    if (!text || !text.trim()) {
+      btn.textContent = "Nada copiado";
+      setTimeout(() => { btn.textContent = orig; }, 1600);
+      return;
+    }
+    $("q-raw-paste").value = text;
+    parseRawQuestion();
+    btn.textContent = "Preenchido!";
+  } catch (_) {
+    btn.textContent = "Cole na caixa acima";
+  }
+  setTimeout(() => { btn.textContent = orig; }, 1600);
+});
+
 document
   .querySelectorAll("input[type='text'], textarea, select")
   .forEach((el) => {

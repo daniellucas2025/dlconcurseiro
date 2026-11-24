@@ -247,15 +247,16 @@
         </div>
 
         <details class="quick-paste" open>
-          <summary>Importar Questão por Link do TEC ou Texto</summary>
+          <summary>Importar Questão (TEC / QConcursos / Gran — PC e Celular)</summary>
           <div class="quick-paste-body">
             <textarea id="q-raw-paste" rows="3" placeholder="Cole o link da questão do TEC (ex: https://www.tecconcursos.com.br/questoes/335663) ou o texto da questão..."></textarea>
             <div class="file-row">
-              <button id="btn-parse-raw" class="btn btn-secondary" type="button">Importar Questão</button>
-              <a id="tec-bookmarklet-link" class="btn btn-primary" href="#" title="Arraste este botão para a barra de favoritos do navegador">Favorito 1-Clique TEC</a>
-              <button id="btn-copy-bookmarklet" class="btn btn-ghost" type="button">Copiar Script</button>
+              <button id="btn-paste-raw-text" class="btn btn-primary" type="button">Colar e Preencher</button>
+              <button id="btn-parse-raw" class="btn btn-secondary" type="button">Extrair Dados</button>
+              <a id="tec-bookmarklet-link" class="btn btn-secondary" href="#" title="Salve como favorito para usar no PC ou Android">Favorito TEC</a>
+              <button id="btn-copy-bookmarklet" class="btn btn-ghost" type="button">Copiar Favorito</button>
             </div>
-            <small id="tec-ext-hint" class="muted-hint">Para colar apenas o link do TEC automaticamente, carregue a pasta <code>extensao-tec</code> em <code>chrome://extensions</code> (ou use o Favorito 1-Clique).</small>
+            <small id="tec-ext-hint" class="muted-hint">No celular Android: copie a questão no TEC e toque em <strong>Colar e Preencher</strong> (ou salve o <strong>Favorito TEC</strong> no Chrome e chame pela barra de endereço).</small>
           </div>
         </details>
 
