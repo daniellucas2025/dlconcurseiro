@@ -2840,25 +2840,50 @@ function parseRawQuestion(fromUrlFetch = false) {
   // 1. Converte links em Markdown [texto](https://...) para apenas "texto"
   raw = raw.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, "$1");
 
-  // 2. Detecta gabarito no final (ex: "Gabarito: B" ou "Resposta: Letra C")
+  // 2. Detecta comentário do professor / resolução / justificativa no final
+  const commMatch = raw.match(/(?:^|\n)\s*(?:coment[áa]rio(?:\s+do\s+professor)?|resolu[çc][ãa]o|justificativa)\s*[:\-]\s*([\s\S]+)$/i);
+  if (commMatch) {
+    let commText = commMatch[1].trim();
+    const gabInComm = commText.match(/(?:^|\n)\s*(?:gabarito|resposta)\s*[:\-]?\s*(?:letra\s*)?([A-Ea-e])\b[^\n]*$/i);
+    if (gabInComm) {
+      $("q-gabarito").value = gabInComm[1].toUpperCase();
+      commText = commText.slice(0, gabInComm.index).trim();
+    }
+    if (commText) $("q-comentario").value = commText;
+    raw = raw.slice(0, commMatch.index).trim();
+  }
+
+  // 3. Detecta gabarito (ex: "Gabarito: B" ou "Resposta: Letra C")
   const gabMatch = raw.match(/(?:^|\n)\s*(?:gabarito|resposta)\s*[:\-]?\s*(?:letra\s*)?([A-Ea-e])\b[^\n]*$/i);
   if (gabMatch) {
     $("q-gabarito").value = gabMatch[1].toUpperCase();
     raw = raw.slice(0, gabMatch.index).trim();
   }
 
-  // 3. Remove linhas de ruído comuns de cópia do TEC / QConcursos / Gran
+  // 4. Remove linhas de ruído comuns de cópia do TEC / QConcursos / Gran
   const noiseLineRe = /^(?:responder|pular|estatísticas|comentários|cadernos|anotações|notificar erro|texto associado|salvar|q\d{5,}|#\d{5,})$/i;
-  const rawLines = raw
+  let rawLines = raw
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l.length > 0 && !noiseLineRe.test(l));
 
-  // 4. Detecta cabeçalho padrão do TEC Concursos:
+  // 4b. Extrai Matéria / Assunto se presentes (ex: estilo TEC - Copiar Questão)
+  let extractedMat = "";
+  let extractedAssunto = "";
+  rawLines = rawLines.filter((line) => {
+    const mMat = line.match(/^mat[ée]ria\s*[:\-]\s*(.+)$/i);
+    if (mMat) { extractedMat = mMat[1].trim(); return false; }
+    const mAss = line.match(/^assunto\s*[:\-]\s*(.+)$/i);
+    if (mAss) { extractedAssunto = mAss[1].trim(); return false; }
+    return true;
+  });
+
+  // 5. Detecta cabeçalho padrão do TEC Concursos:
   // Ex: "#335663 CEBRASPE (CESPE) - 2016 - Analista Judiciário (TRT 8ª Região)/Administrativa/\"Sem Especialidade\""
   const tecHeaderRe = /^(?:#?\d+\s+)?([A-Za-zÀ-ÿ0-9\s().]+?)\s*[-–]\s*(20\d{2}|19\d{2})\s*[-–]\s*(.+)$/;
   const boardRe = /\b(FGV|CEBRASPE|CESPE|FCC|VUNESP|IBFC|QUADRIX|INSTITUTO AOCP|AOCP|IDECAN|CONSULPLAN|FUNDATEC|IADES|CESGRANRIO|SELECON|FEPESE|FUMARC)\b/i;
   const yearRe = /\b(20[0-2][0-9]|199[0-9])\b/;
+  let setMateriaFromHeader = false;
 
   for (let i = 0; i < Math.min(3, rawLines.length); i++) {
     const line = rawLines[i];
@@ -2872,7 +2897,10 @@ function parseRawQuestion(fromUrlFetch = false) {
         .replace(/\s*\/\s*/g, " • ")
         .trim();
       $("q-banca").value = `${shortBoard.toUpperCase()} • ${year}`;
-      if (cargo) $("q-materia").value = cargo;
+      if (cargo) {
+        $("q-materia").value = cargo;
+        setMateriaFromHeader = true;
+      }
       rawLines.splice(i, 1);
       break;
     }
@@ -2888,10 +2916,17 @@ function parseRawQuestion(fromUrlFetch = false) {
           .replace(/\/?\s*["“”]?Sem Especialidade["“”]?/gi, "")
           .replace(/\s*\/\s*/g, " • ")
           .trim();
+        setMateriaFromHeader = true;
       }
       rawLines.splice(i, 1);
       break;
     }
+  }
+
+  if (!setMateriaFromHeader && (extractedMat || extractedAssunto)) {
+    $("q-materia").value = extractedMat && extractedAssunto
+      ? `${extractedMat} • ${extractedAssunto}`
+      : (extractedMat || extractedAssunto);
   }
 
   // 5. Parser sequencial linha a linha para alternativas A, B, C, D, E (suporta letra isolada na linha ou A) texto)
@@ -3226,8 +3261,80 @@ $("btn-cebraspe-mode").addEventListener("click", () => {
 });
 
 $("btn-parse-raw").addEventListener("click", parseRawQuestion);
-$("q-raw-paste")?.addEventListener("paste", () => {
+$("q-raw-paste")?.addEventListener("paste", (e) => {
+  const items = e.clipboardData?.items;
+  if (items) {
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        loadQuestionImageFromBlob(item.getAsFile());
+        break;
+      }
+    }
+  }
   setTimeout(parseRawQuestion, 30);
+});
+
+function buildFormattedQuestionText(mode, forAi = false) {
+  const banca = $("q-banca").value.trim();
+  const materia = $("q-materia").value.trim();
+  const enunciado = $("q-enunciado").value.trim();
+  const alts = [
+    $("q-alt-a").value.trim(),
+    $("q-alt-b").value.trim(),
+    $("q-alt-c").value.trim(),
+    $("q-alt-d").value.trim(),
+    $("q-alt-e").value.trim(),
+  ].filter(Boolean);
+  const gabarito = $("q-gabarito").value;
+  const comentario = $("q-comentario").value.trim();
+
+  const questaoParts = [];
+  if (banca) questaoParts.push(`Banca/Ano: ${banca}`);
+  if (materia) questaoParts.push(`Cargo/Matéria: ${materia}`);
+  if (enunciado) questaoParts.push(`\n${enunciado}`);
+  if (alts.length) questaoParts.push(`\n${alts.join("\n")}`);
+
+  const comentParts = [
+    `Gabarito: Letra ${gabarito}`,
+    comentario ? `Comentário:\n${comentario}` : "",
+  ].filter(Boolean);
+
+  let body = "";
+  if (mode === "questao") body = questaoParts.join("\n").trim();
+  else if (mode === "comentario") body = comentParts.join("\n\n").trim();
+  else body = [questaoParts.join("\n").trim(), comentParts.join("\n\n").trim()].filter(Boolean).join("\n\n---\n\n");
+
+  if (!forAi) return body;
+  return (
+    `Atue como professor especialista em concursos públicos. Analise a questão abaixo, confirme por que a alternativa correta está certa e explique objetivamente (em até 4 linhas, ideal para post de estudo) o erro de cada uma das demais alternativas:\n\n` +
+    body
+  );
+}
+
+$("btn-copy-q-text")?.addEventListener("click", async () => {
+  const btn = $("btn-copy-q-text");
+  const orig = btn.textContent;
+  const mode = $("q-copy-mode")?.value || "completa";
+  try {
+    await navigator.clipboard.writeText(buildFormattedQuestionText(mode, false));
+    btn.textContent = "Copiado!";
+  } catch (_) {
+    btn.textContent = "Erro ao copiar";
+  }
+  setTimeout(() => { btn.textContent = orig; }, 1600);
+});
+
+$("btn-copy-q-ai")?.addEventListener("click", async () => {
+  const btn = $("btn-copy-q-ai");
+  const orig = btn.textContent;
+  const mode = $("q-copy-mode")?.value || "completa";
+  try {
+    await navigator.clipboard.writeText(buildFormattedQuestionText(mode, true));
+    btn.textContent = "Copiado p/ IA!";
+  } catch (_) {
+    btn.textContent = "Erro ao copiar";
+  }
+  setTimeout(() => { btn.textContent = orig; }, 1600);
 });
 
 $("btn-paste-raw-text")?.addEventListener("click", async () => {
@@ -3531,6 +3638,7 @@ function buildTecBookmarkletHref() {
     var cLink = qRoot.querySelector('a[href*="/concursos/"]') || document.querySelector('a[href*="/concursos/"]');
     var mLink = qRoot.querySelector('a[href*="/materias/"]') || document.querySelector('a[href*="/materias/"]');
     var enEl = qRoot.querySelector('.questao-enunciado-texto, .enunciado-texto, [class*="enunciado-texto"]');
+    var commEl = qRoot.querySelector('.questao-comentario-professor, [class*="comentario-professor"], .comentario-texto');
     var altEls = pick(qRoot, [
       '.questao-enunciado-alternativa-texto',
       '.questao-enunciado-alternativas > li',
@@ -3558,6 +3666,7 @@ function buildTecBookmarkletHref() {
     } else {
       p.set('raw', (qRoot.innerText || '').trim().slice(0, 5500));
     }
+    if(commEl && commEl.innerText.trim()) p.set('comentario', commEl.innerText.trim().slice(0, 1500));
     var letters = ['a','b','c','d','e'];
     altEls.forEach(function(el, idx){
       if(idx >= 5) return;
@@ -3630,6 +3739,7 @@ function initUrlImportAndBookmarklet() {
       });
     }
     if (params.get("gabarito")) $("q-gabarito").value = params.get("gabarito").toUpperCase();
+    if (params.get("comentario")) $("q-comentario").value = params.get("comentario");
     render();
     try { history.replaceState(null, "", window.location.pathname); } catch (_) {}
   }

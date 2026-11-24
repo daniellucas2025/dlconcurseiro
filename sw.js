@@ -1,4 +1,4 @@
-const CACHE_NAME = "concursostudio-mobile-v22";
+const CACHE_NAME = "concursostudio-mobile-v23";
 const ASSETS = [
   "./",
   "./index.html",
