@@ -2623,6 +2623,93 @@ function deleteSelectedDraft() {
   refreshDraftsDropdown();
 }
 
+function htmlElementToLines(el) {
+  if (!el) return "";
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll("script, style, noscript, svg, button").forEach((n) => n.remove());
+  clone.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
+  clone.querySelectorAll("p, div, li, tr, h1, h2, h3, h4, h5, h6, section, article, header").forEach((blk) => {
+    blk.insertAdjacentText("beforebegin", "\n");
+    blk.insertAdjacentText("afterend", "\n");
+  });
+  return (clone.textContent || "")
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function cleanAltText(text) {
+  return String(text || "")
+    .replace(/\s+/g, " ")
+    .replace(/^[•○●◦▪▫✂\s]*\(?[A-Ea-e]\)?[).:\-–—]?\s*/, "")
+    .trim();
+}
+
+function extractFromFetchedHtml(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const pick = (sels, min, max) => {
+    for (const sel of sels) {
+      const list = Array.from(doc.querySelectorAll(sel)).filter((el) => (el.textContent || "").trim().length > 0);
+      if (list.length >= min && list.length <= max) return list;
+    }
+    return [];
+  };
+
+  // 1. Tenta JSON-LD (schema.org Question / Quiz)
+  let ldAlts = [];
+  let ldStem = "";
+  doc.querySelectorAll('script[type="application/ld+json"]').forEach((s) => {
+    try {
+      const data = JSON.parse(s.textContent || "{}");
+      const items = Array.isArray(data) ? data : [data];
+      for (const it of items) {
+        const q = it?.mainEntity || it;
+        if (q?.text && !ldStem) ldStem = String(q.text).trim();
+        const ans = [].concat(q?.suggestedAnswer || [], q?.acceptedAnswer || []);
+        if (ans.length >= 2 && ldAlts.length === 0) {
+          ldAlts = ans.map((a) => cleanAltText(a?.text || a?.name || "")).filter(Boolean).slice(0, 5);
+        }
+      }
+    } catch (_) {}
+  });
+
+  // 2. Tenta seletores DOM do TEC Concursos / QConcursos / Gran
+  const altEls = pick([
+    ".questao-enunciado-alternativa-texto",
+    ".questao-enunciado-alternativa",
+    ".questao-enunciado-alternativas > li",
+    "ul.questao-enunciado-alternativas li",
+    '[ng-repeat*="alternativa"] .alternativa-texto',
+    '[ng-repeat*="alternativa"]',
+    "ul.alternativas > li",
+    ".alternativa-texto",
+    ".alternativa",
+    'ol[type="a"] > li',
+    'ol[type="A"] > li',
+  ], 2, 5);
+
+  const domAlts = altEls.map((el) => cleanAltText(el.textContent)).filter(Boolean);
+  const alts = domAlts.length >= 2 ? domAlts : ldAlts;
+
+  const cabEl = doc.querySelector('.questao-cabecalho, .cabecalho-questao, [class*="cabecalho"]');
+  const enEl = doc.querySelector('.questao-enunciado-texto, .enunciado-texto, [class*="enunciado-texto"], .questao-enunciado');
+  let enText = "";
+  if (enEl) {
+    const enClone = enEl.cloneNode(true);
+    enClone.querySelectorAll('.questao-enunciado-alternativas, .alternativas, ul, ol').forEach((n) => n.remove());
+    enText = htmlElementToLines(enClone);
+  } else if (ldStem) {
+    enText = ldStem;
+  }
+
+  const root = doc.querySelector('.questao, .questao-conteudo, [ng-controller*="Questao"], main, article') || doc.body;
+  const fullLines = htmlElementToLines(root);
+  const headerLines = cabEl ? htmlElementToLines(cabEl) : fullLines.split("\n").slice(0, 5).join("\n");
+
+  return { fullLines, headerLines, enText, alts };
+}
+
 async function tryFetchQuestionFromUrl(url) {
   const btn = $("btn-parse-raw");
   const orig = "Extrair Dados da Questão";
@@ -2638,12 +2725,29 @@ async function tryFetchQuestionFromUrl(url) {
       const res = await fetch(proxyUrl);
       if (!res.ok) continue;
       const html = await res.text();
-      if (!html || /just a moment|cloudflare|cf-browser-verification/i.test(html)) continue;
+      if (!html || /just a moment|cloudflare|cf-browser-verification|faça o login para ter acesso/i.test(html)) continue;
 
-      const doc = new DOMParser().parseFromString(html, "text/html");
-      const textContent = (doc.body?.innerText || "").trim();
-      if (textContent.length > 80 && /\b[A-E]\b/.test(textContent)) {
-        $("q-raw-paste").value = textContent;
+      const { fullLines, headerLines, enText, alts } = extractFromFetchedHtml(html);
+
+      if (alts.length >= 2) {
+        $("q-raw-paste").value = headerLines || fullLines;
+        parseRawQuestion(true);
+        if (enText) $("q-enunciado").value = enText;
+        const ids = ["q-alt-a", "q-alt-b", "q-alt-c", "q-alt-d", "q-alt-e"];
+        const letters = ["A", "B", "C", "D", "E"];
+        ids.forEach((id, idx) => {
+          $(id).value = alts[idx] ? `${letters[idx]}) ${alts[idx]}` : "";
+        });
+        if (btn) {
+          btn.textContent = `Extraído do link (${alts.length} alt.)!`;
+          setTimeout(() => { btn.textContent = orig; }, 2200);
+        }
+        render();
+        return;
+      }
+
+      if (fullLines.length > 80) {
+        $("q-raw-paste").value = fullLines;
         parseRawQuestion(true);
         return;
       }
@@ -2651,7 +2755,7 @@ async function tryFetchQuestionFromUrl(url) {
   }
 
   if (btn) {
-    btn.textContent = "TEC bloqueou o link direto — cole o texto (Ctrl+C)";
+    btn.textContent = "Link exige login/bloqueado — use o Favorito 1-Clique ou Ctrl+C";
     setTimeout(() => { btn.textContent = orig; }, 3200);
   }
 }
