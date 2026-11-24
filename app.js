@@ -2642,7 +2642,7 @@ function htmlElementToLines(el) {
 function cleanAltText(text) {
   return String(text || "")
     .replace(/\s+/g, " ")
-    .replace(/^[•○●◦▪▫✂\s]*\(?[A-Ea-e]\)?[).:\-–—]?\s*/, "")
+    .replace(/^(?:[•○●◦▪▫✂\s]+)?(?:\([A-Ea-e]\)\s*|[A-Ea-e][).:\-–—]\s+)/, "")
     .trim();
 }
 
@@ -2710,10 +2710,63 @@ function extractFromFetchedHtml(html) {
   return { fullLines, headerLines, enText, alts };
 }
 
+function fetchTecViaExtension(url) {
+  return new Promise((resolve) => {
+    if (document.documentElement.dataset.tecExtension !== "ready") {
+      resolve(null);
+      return;
+    }
+    const requestId = `tec_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const timer = setTimeout(() => {
+      window.removeEventListener("message", onMsg);
+      resolve({ ok: false, error: "Tempo esgotado na extensão." });
+    }, 11000);
+
+    function onMsg(event) {
+      if (event.source !== window || !event.data) return;
+      if (event.data.type === "CONCURSOSTUDIO_TEC_RESULT" && event.data.requestId === requestId) {
+        clearTimeout(timer);
+        window.removeEventListener("message", onMsg);
+        resolve(event.data);
+      }
+    }
+
+    window.addEventListener("message", onMsg);
+    window.postMessage({ type: "CONCURSOSTUDIO_FETCH_TEC", url, requestId }, "*");
+  });
+}
+
 async function tryFetchQuestionFromUrl(url) {
   const btn = $("btn-parse-raw");
-  const orig = "Extrair Dados da Questão";
-  if (btn) btn.textContent = "Buscando link...";
+  const orig = "Importar Questão";
+  if (btn) btn.textContent = "Buscando dados da questão...";
+
+  // 1. Se a extensão ConcursoStudio TEC estiver ativa no Chrome, usa a sessão logada do próprio navegador
+  const extRes = await fetchTecViaExtension(url);
+  if (extRes) {
+    if (extRes.ok && extRes.data) {
+      const d = extRes.data;
+      if (d.banca) $("q-banca").value = d.banca;
+      if (d.cargo) $("q-materia").value = d.cargo;
+      if (d.enunciado) $("q-enunciado").value = d.enunciado;
+      const ids = ["q-alt-a", "q-alt-b", "q-alt-c", "q-alt-d", "q-alt-e"];
+      const letters = ["A", "B", "C", "D", "E"];
+      ids.forEach((id, idx) => {
+        $(id).value = d.alts?.[idx] ? `${letters[idx]}) ${d.alts[idx]}` : "";
+      });
+      if (btn) {
+        btn.textContent = `Importado (${d.alts?.length || 0} alt.)!`;
+        setTimeout(() => { btn.textContent = orig; }, 2200);
+      }
+      render();
+      return;
+    }
+    if (btn) {
+      btn.textContent = extRes.error || "Erro ao ler link no TEC";
+      setTimeout(() => { btn.textContent = orig; }, 3500);
+    }
+    return;
+  }
 
   const proxies = [
     `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -3447,40 +3500,50 @@ document.addEventListener("click", (event) => {
 function buildTecBookmarkletHref() {
   const targetBase = `${window.location.origin}${window.location.pathname}`;
   const code = `(function(){
-    var pick = function(sels, min, max){
+    var pick = function(root, sels, min, max){
       for(var i=0;i<sels.length;i++){
-        var list = Array.from(document.querySelectorAll(sels[i])).filter(function(el){ return (el.innerText||'').trim().length > 0; });
+        var list = Array.from(root.querySelectorAll(sels[i])).filter(function(el){ return (el.innerText||'').trim().length > 0; });
         if(list.length >= min && list.length <= max) return list;
       }
       return [];
     };
-    var root = document.querySelector('.questao, .questao-conteudo, [ng-controller*="Questao"], main, article') || document.body;
-    var cab = document.querySelector('.questao-cabecalho, .cabecalho-questao, [class*="cabecalho"]');
-    var enEl = document.querySelector('.questao-enunciado-texto, .enunciado-texto, [class*="enunciado-texto"]');
-    var altEls = pick([
+    var qRoot = document.querySelector('.questao-conteudo, article.questao, .questao, [ng-controller*="Questao"], main') || document.body;
+    var bLink = qRoot.querySelector('a[href*="/bancas/"]') || document.querySelector('a[href*="/bancas/"]');
+    var cLink = qRoot.querySelector('a[href*="/concursos/"]') || document.querySelector('a[href*="/concursos/"]');
+    var mLink = qRoot.querySelector('a[href*="/materias/"]') || document.querySelector('a[href*="/materias/"]');
+    var enEl = qRoot.querySelector('.questao-enunciado-texto, .enunciado-texto, [class*="enunciado-texto"]');
+    var altEls = pick(qRoot, [
       '.questao-enunciado-alternativa-texto',
-      '.questao-enunciado-alternativa',
       '.questao-enunciado-alternativas > li',
       'ul.questao-enunciado-alternativas li',
       '[ng-repeat*="alternativa"] .alternativa-texto',
       '[ng-repeat*="alternativa"]',
+      '.questao-enunciado-alternativa',
       'ul.alternativas > li',
-      '.alternativa-texto',
-      '.alternativa'
+      '.alternativa-texto'
     ], 2, 5);
     var p = new URLSearchParams();
-    var rawHeader = cab ? cab.innerText.trim() : (root.innerText || '').trim().split('\\n').slice(0, 4).join('\\n');
+    var banca = bLink ? bLink.innerText.replace(/\\s*\\([^)]*\\)/g,'').trim() : '';
+    var ano = '', cargo = '';
+    if(cLink){
+      var ct = cLink.innerText.replace(/\\s+/g,' ').trim();
+      var ym = ct.match(/\\b(20\\d{2}|19\\d{2})\\b/);
+      if(ym) ano = ym[1];
+      cargo = ct.replace(/^(?:20\\d{2}|19\\d{2})\\s*[-–]\\s*/,'').replace(/\\/?\\s*["“”]?Sem Especialidade["“”]?/gi,'').replace(/\\s*\\/\\s*/g,' • ').trim();
+    }
+    if(!cargo && mLink) cargo = mLink.innerText.trim();
+    if(banca || ano) p.set('banca', (banca && ano) ? (banca.toUpperCase() + ' • ' + ano) : (banca.toUpperCase() || ano));
+    if(cargo) p.set('materia', cargo);
     if(enEl && altEls.length >= 2){
-      p.set('raw', rawHeader.slice(0, 800));
       p.set('enunciado', enEl.innerText.trim().slice(0, 2500));
     } else {
-      p.set('raw', (root.innerText || '').trim().slice(0, 5500));
+      p.set('raw', (qRoot.innerText || '').trim().slice(0, 5500));
     }
     var letters = ['a','b','c','d','e'];
     altEls.forEach(function(el, idx){
       if(idx >= 5) return;
       var t = (el.innerText || '').replace(/\\s+/g, ' ').trim();
-      t = t.replace(/^[•○●◦▪▫✂\\s]*\\(?[A-Ea-e]\\)?[).:\\-–—]?\\s*/, '').trim();
+      t = t.replace(/^(?:[•○●◦▪▫✂\\s]+)?(?:\\([A-Ea-e]\\)\\s*|[A-Ea-e][).:\\-–—]\\s+)/, '').trim();
       if(t) p.set(letters[idx], letters[idx].toUpperCase() + ') ' + t);
     });
     if(!p.get('raw') && !p.get('enunciado')){ alert('Abra uma questão no TEC Concursos primeiro.'); return; }
@@ -3490,6 +3553,15 @@ function buildTecBookmarkletHref() {
 }
 
 function initUrlImportAndBookmarklet() {
+  const checkExtBadge = () => {
+    const hint = $("tec-ext-hint");
+    if (hint && document.documentElement.dataset.tecExtension === "ready") {
+      hint.innerHTML = "✅ <strong>Extensão TEC ativa!</strong> Basta colar qualquer link de questão do TEC acima que preenchemos tudo sozinho.";
+    }
+  };
+  checkExtBadge();
+  setTimeout(checkExtBadge, 400);
+
   const link = $("tec-bookmarklet-link");
   if (link) {
     link.href = buildTecBookmarkletHref();

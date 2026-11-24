@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "ConcursoStudio — Importador TEC Concursos",
+  "version": "1.0.0",
+  "description": "Importa automaticamente Banca, Ano, Cargo/Órgão, Enunciado e Alternativas ao colar o link da questão do TEC no ConcursoStudio.",
+  "permissions": ["tabs", "scripting"],
+  "host_permissions": [
+    "*://*.tecconcursos.com.br/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://daniellucas2025.github.io/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "https://daniellucas2025.github.io/*"
+      ],
+      "js": ["content-studio.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

@@ -247,15 +247,15 @@
         </div>
 
         <details class="quick-paste" open>
-          <summary>Importar Questão (Cole o texto do TEC / QConcursos ou use o Favorito 1-Clique)</summary>
+          <summary>Importar Questão por Link do TEC ou Texto</summary>
           <div class="quick-paste-body">
-            <textarea id="q-raw-paste" rows="4" placeholder="Cole aqui a questão copiada do TEC Concursos (com Banca, Ano, Cargo, Enunciado e A–E) ou o link da questão..."></textarea>
+            <textarea id="q-raw-paste" rows="3" placeholder="Cole o link da questão do TEC (ex: https://www.tecconcursos.com.br/questoes/335663) ou o texto da questão..."></textarea>
             <div class="file-row">
-              <button id="btn-parse-raw" class="btn btn-secondary" type="button">Extrair Dados da Questão</button>
-              <a id="tec-bookmarklet-link" class="btn btn-primary" href="#" title="Arraste este botão para a barra de favoritos do navegador">Enviar do TEC (Arraste p/ Favoritos)</a>
+              <button id="btn-parse-raw" class="btn btn-secondary" type="button">Importar Questão</button>
+              <a id="tec-bookmarklet-link" class="btn btn-primary" href="#" title="Arraste este botão para a barra de favoritos do navegador">Favorito 1-Clique TEC</a>
               <button id="btn-copy-bookmarklet" class="btn btn-ghost" type="button">Copiar Script</button>
             </div>
-            <small class="muted-hint">Dica: arraste o botão azul para sua barra de favoritos. Quando estiver logado em uma questão no TEC, clique nele para abrir aqui já preenchido.</small>
+            <small id="tec-ext-hint" class="muted-hint">Para colar apenas o link do TEC automaticamente, carregue a pasta <code>extensao-tec</code> em <code>chrome://extensions</code> (ou use o Favorito 1-Clique).</small>
           </div>
         </details>
 
