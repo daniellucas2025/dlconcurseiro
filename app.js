@@ -2657,12 +2657,13 @@ async function tryFetchQuestionFromUrl(url) {
 }
 
 function matchAltMarker(line, letter) {
+  const cleaned = line.replace(/^[\s•○●◦▪▫✂✗✕\-–—]+/, "").trim();
   const standaloneRe = new RegExp(`^\\(?\\[?${letter}\\]?(?:[).:\\-–—])?$`, "i");
-  if (standaloneRe.test(line)) {
+  if (standaloneRe.test(cleaned)) {
     return { matched: true, rest: "" };
   }
   const inlineRe = new RegExp(`^\\(?\\[?${letter}\\]?(?:\\)\\s*|\\.(?=\\s)|\\s*[-–—:]\\s+)(.+)$`, "i");
-  const m = line.match(inlineRe);
+  const m = cleaned.match(inlineRe);
   if (m) {
     return { matched: true, rest: m[1].trim() };
   }
@@ -3342,11 +3343,44 @@ document.addEventListener("click", (event) => {
 function buildTecBookmarkletHref() {
   const targetBase = `${window.location.origin}${window.location.pathname}`;
   const code = `(function(){
+    var pick = function(sels, min, max){
+      for(var i=0;i<sels.length;i++){
+        var list = Array.from(document.querySelectorAll(sels[i])).filter(function(el){ return (el.innerText||'').trim().length > 0; });
+        if(list.length >= min && list.length <= max) return list;
+      }
+      return [];
+    };
     var root = document.querySelector('.questao, .questao-conteudo, [ng-controller*="Questao"], main, article') || document.body;
-    var txt = (root.innerText || '').trim();
-    if (!txt) { alert('Abra uma questão no TEC Concursos primeiro.'); return; }
-    var url = '${targetBase}?raw=' + encodeURIComponent(txt.slice(0, 6000));
-    window.open(url, '_blank');
+    var cab = document.querySelector('.questao-cabecalho, .cabecalho-questao, [class*="cabecalho"]');
+    var enEl = document.querySelector('.questao-enunciado-texto, .enunciado-texto, [class*="enunciado-texto"]');
+    var altEls = pick([
+      '.questao-enunciado-alternativa-texto',
+      '.questao-enunciado-alternativa',
+      '.questao-enunciado-alternativas > li',
+      'ul.questao-enunciado-alternativas li',
+      '[ng-repeat*="alternativa"] .alternativa-texto',
+      '[ng-repeat*="alternativa"]',
+      'ul.alternativas > li',
+      '.alternativa-texto',
+      '.alternativa'
+    ], 2, 5);
+    var p = new URLSearchParams();
+    var rawHeader = cab ? cab.innerText.trim() : (root.innerText || '').trim().split('\\n').slice(0, 4).join('\\n');
+    if(enEl && altEls.length >= 2){
+      p.set('raw', rawHeader.slice(0, 800));
+      p.set('enunciado', enEl.innerText.trim().slice(0, 2500));
+    } else {
+      p.set('raw', (root.innerText || '').trim().slice(0, 5500));
+    }
+    var letters = ['a','b','c','d','e'];
+    altEls.forEach(function(el, idx){
+      if(idx >= 5) return;
+      var t = (el.innerText || '').replace(/\\s+/g, ' ').trim();
+      t = t.replace(/^[•○●◦▪▫✂\\s]*\\(?[A-Ea-e]\\)?[).:\\-–—]?\\s*/, '').trim();
+      if(t) p.set(letters[idx], letters[idx].toUpperCase() + ') ' + t);
+    });
+    if(!p.get('raw') && !p.get('enunciado')){ alert('Abra uma questão no TEC Concursos primeiro.'); return; }
+    window.open('${targetBase}?' + p.toString(), '_blank');
   })();`.replace(/\s+/g, " ").trim();
   return `javascript:${code}`;
 }
@@ -3379,23 +3413,27 @@ function initUrlImportAndBookmarklet() {
   const rawParam = params.get("raw");
   const hasStructured = params.has("enunciado") || params.has("a") || params.has("banca");
 
-  if (rawParam) {
+  if (rawParam || hasStructured) {
     state.template = "questao";
     switchTemplate("questao");
-    $("q-raw-paste").value = rawParam;
-    parseRawQuestion(true);
-    try { history.replaceState(null, "", window.location.pathname); } catch (_) {}
-  } else if (hasStructured) {
-    state.template = "questao";
-    switchTemplate("questao");
+    if (rawParam) {
+      $("q-raw-paste").value = rawParam;
+      parseRawQuestion(true);
+    }
     if (params.get("banca")) $("q-banca").value = params.get("banca");
     if (params.get("materia")) $("q-materia").value = params.get("materia");
     if (params.get("enunciado")) $("q-enunciado").value = params.get("enunciado");
-    if (params.get("a")) $("q-alt-a").value = params.get("a");
-    if (params.get("b")) $("q-alt-b").value = params.get("b");
-    if (params.get("c")) $("q-alt-c").value = params.get("c");
-    if (params.get("d")) $("q-alt-d").value = params.get("d");
-    if (params.get("e")) $("q-alt-e").value = params.get("e");
+
+    const explicitAlts = ["a", "b", "c", "d", "e"].map((k) => params.get(k));
+    if (explicitAlts.some(Boolean)) {
+      const ids = ["q-alt-a", "q-alt-b", "q-alt-c", "q-alt-d", "q-alt-e"];
+      explicitAlts.forEach((val, idx) => {
+        const clean = (val || "").trim();
+        $(ids[idx]).value = clean
+          ? (/^[A-E]\)\s/i.test(clean) ? clean : `${ids[idx].slice(-1).toUpperCase()}) ${clean}`)
+          : "";
+      });
+    }
     if (params.get("gabarito")) $("q-gabarito").value = params.get("gabarito").toUpperCase();
     render();
     try { history.replaceState(null, "", window.location.pathname); } catch (_) {}
