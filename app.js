@@ -3339,9 +3339,73 @@ document.addEventListener("click", (event) => {
   if (event.target.closest(".tab-btn, .pill-btn, [data-editor-tab], #btn-preset-example")) scheduleAutoSave();
 });
 
+function buildTecBookmarkletHref() {
+  const targetBase = `${window.location.origin}${window.location.pathname}`;
+  const code = `(function(){
+    var root = document.querySelector('.questao, .questao-conteudo, [ng-controller*="Questao"], main, article') || document.body;
+    var txt = (root.innerText || '').trim();
+    if (!txt) { alert('Abra uma questão no TEC Concursos primeiro.'); return; }
+    var url = '${targetBase}?raw=' + encodeURIComponent(txt.slice(0, 6000));
+    window.open(url, '_blank');
+  })();`.replace(/\s+/g, " ").trim();
+  return `javascript:${code}`;
+}
+
+function initUrlImportAndBookmarklet() {
+  const link = $("tec-bookmarklet-link");
+  if (link) {
+    link.href = buildTecBookmarkletHref();
+    link.addEventListener("click", (e) => {
+      if (!window.location.hostname.includes("tecconcursos")) {
+        e.preventDefault();
+        alert("Arraste este botão para a sua barra de favoritos (ou clique em 'Copiar Script' e salve como favorito). Depois, clique nele quando estiver com uma questão aberta no TEC Concursos.");
+      }
+    });
+  }
+
+  $("btn-copy-bookmarklet")?.addEventListener("click", async () => {
+    const btn = $("btn-copy-bookmarklet");
+    const orig = btn.textContent;
+    try {
+      await navigator.clipboard.writeText(buildTecBookmarkletHref());
+      btn.textContent = "Script Copiado!";
+    } catch (_) {
+      btn.textContent = "Erro ao copiar";
+    }
+    setTimeout(() => { btn.textContent = orig; }, 1800);
+  });
+
+  const params = new URLSearchParams(window.location.search);
+  const rawParam = params.get("raw");
+  const hasStructured = params.has("enunciado") || params.has("a") || params.has("banca");
+
+  if (rawParam) {
+    state.template = "questao";
+    switchTemplate("questao");
+    $("q-raw-paste").value = rawParam;
+    parseRawQuestion(true);
+    try { history.replaceState(null, "", window.location.pathname); } catch (_) {}
+  } else if (hasStructured) {
+    state.template = "questao";
+    switchTemplate("questao");
+    if (params.get("banca")) $("q-banca").value = params.get("banca");
+    if (params.get("materia")) $("q-materia").value = params.get("materia");
+    if (params.get("enunciado")) $("q-enunciado").value = params.get("enunciado");
+    if (params.get("a")) $("q-alt-a").value = params.get("a");
+    if (params.get("b")) $("q-alt-b").value = params.get("b");
+    if (params.get("c")) $("q-alt-c").value = params.get("c");
+    if (params.get("d")) $("q-alt-d").value = params.get("d");
+    if (params.get("e")) $("q-alt-e").value = params.get("e");
+    if (params.get("gabarito")) $("q-gabarito").value = params.get("gabarito").toUpperCase();
+    render();
+    try { history.replaceState(null, "", window.location.pathname); } catch (_) {}
+  }
+}
+
 loadBrandPrefs();
 restoreAutoDraft();
 switchTemplate(state.template);
 refreshDraftsDropdown();
+initUrlImportAndBookmarklet();
 render();
 if (state.manuscriptMode && document.fonts?.load) document.fonts.load('600 34px "Caveat"').then(() => render()).catch(() => {});

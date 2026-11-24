@@ -247,10 +247,15 @@
         </div>
 
         <details class="quick-paste" open>
-          <summary>Importar Questão (Cole o texto do TEC / QConcursos ou Link)</summary>
+          <summary>Importar Questão (Cole o texto do TEC / QConcursos ou use o Favorito 1-Clique)</summary>
           <div class="quick-paste-body">
             <textarea id="q-raw-paste" rows="4" placeholder="Cole aqui a questão copiada do TEC Concursos (com Banca, Ano, Cargo, Enunciado e A–E) ou o link da questão..."></textarea>
-            <button id="btn-parse-raw" class="btn btn-secondary" type="button">Extrair Dados da Questão</button>
+            <div class="file-row">
+              <button id="btn-parse-raw" class="btn btn-secondary" type="button">Extrair Dados da Questão</button>
+              <a id="tec-bookmarklet-link" class="btn btn-primary" href="#" title="Arraste este botão para a barra de favoritos do navegador">Enviar do TEC (Arraste p/ Favoritos)</a>
+              <button id="btn-copy-bookmarklet" class="btn btn-ghost" type="button">Copiar Script</button>
+            </div>
+            <small class="muted-hint">Dica: arraste o botão azul para sua barra de favoritos. Quando estiver logado em uma questão no TEC, clique nele para abrir aqui já preenchido.</small>
           </div>
         </details>
 
